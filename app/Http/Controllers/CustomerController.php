@@ -5,27 +5,274 @@ namespace App\Http\Controllers;
 use App\Models\Customer;
 use App\Models\CustomerOrder;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Pagination\LengthAwarePaginator;
 
 class CustomerController extends Controller
 {
     /**
-     * Get initial baseline mock data matching the screenshot exactly.
+     * Ensure customers table exists and has all required columns with proper nullability.
      */
-    protected function getBaselineCustomers()
+    protected function ensureCustomersTable(): void
     {
-        return [];
+        try {
+            if (Schema::hasTable('customers')) {
+                // Ensure columns with strict NOT NULL without defaults are made NULLable
+                try {
+                    $columnDetails = DB::select("SHOW FULL COLUMNS FROM customers");
+                    Log::info("CUSTOMERS DB FULL COLUMNS: " . json_encode($columnDetails));
+
+                    foreach ($columnDetails as $col) {
+                        $field = $col->Field;
+                        $type = $col->Type;
+                        $isNull = $col->Null;
+                        $default = $col->Default;
+                        $extra = $col->Extra;
+
+                        if ($isNull === 'NO' && is_null($default) && $extra !== 'auto_increment' && $col->Key !== 'PRI') {
+                            try {
+                                DB::statement("ALTER TABLE customers MODIFY `{$field}` {$type} NULL");
+                                Log::info("Modified column {$field} to NULLable");
+                            } catch (\Throwable $e) {}
+                        }
+                    }
+                } catch (\Throwable $e) {
+                    Log::warning("Inspect column details warning: " . $e->getMessage());
+                }
+
+                $cols = Schema::getColumnListing('customers');
+
+                Schema::table('customers', function (Blueprint $table) use ($cols) {
+                    if (!in_array('name', $cols)) {
+                        $table->string('name', 255)->nullable();
+                    }
+                    if (!in_array('full_name', $cols)) {
+                        $table->string('full_name', 255)->nullable();
+                    }
+                    if (!in_array('customer_name', $cols)) {
+                        $table->string('customer_name', 255)->nullable();
+                    }
+                    if (!in_array('phone', $cols)) {
+                        $table->string('phone', 50)->nullable();
+                    }
+                    if (!in_array('phone_number', $cols)) {
+                        $table->string('phone_number', 50)->nullable();
+                    }
+                    if (!in_array('customer_phone', $cols)) {
+                        $table->string('customer_phone', 50)->nullable();
+                    }
+                    if (!in_array('email', $cols)) {
+                        $table->string('email', 255)->nullable();
+                    }
+                    if (!in_array('email_address', $cols)) {
+                        $table->string('email_address', 255)->nullable();
+                    }
+                    if (!in_array('customer_email', $cols)) {
+                        $table->string('customer_email', 255)->nullable();
+                    }
+                    if (!in_array('address', $cols)) {
+                        $table->text('address')->nullable();
+                    }
+                    if (!in_array('customer_address', $cols)) {
+                        $table->text('customer_address')->nullable();
+                    }
+                    if (!in_array('tier', $cols)) {
+                        $table->string('tier', 50)->default('REGULAR');
+                    }
+                    if (!in_array('status', $cols)) {
+                        $table->string('status', 50)->default('Active');
+                    }
+                    if (!in_array('avatar', $cols)) {
+                        $table->string('avatar', 255)->nullable();
+                    }
+                    if (!in_array('registration_date', $cols)) {
+                        $table->date('registration_date')->nullable();
+                    }
+                });
+
+                // Sync existing name <-> full_name <-> customer_name if one was empty
+                $freshCols = Schema::getColumnListing('customers');
+                if (in_array('name', $freshCols) && in_array('full_name', $freshCols)) {
+                    try {
+                        DB::statement("UPDATE customers SET name = full_name WHERE (name IS NULL OR name = '') AND (full_name IS NOT NULL AND full_name != '')");
+                        DB::statement("UPDATE customers SET full_name = name WHERE (full_name IS NULL OR full_name = '') AND (name IS NOT NULL AND name != '')");
+                    } catch (\Throwable $e) {}
+                }
+                if (in_array('name', $freshCols) && in_array('customer_name', $freshCols)) {
+                    try {
+                        DB::statement("UPDATE customers SET name = customer_name WHERE (name IS NULL OR name = '') AND (customer_name IS NOT NULL AND customer_name != '')");
+                        DB::statement("UPDATE customers SET customer_name = name WHERE (customer_name IS NULL OR customer_name = '') AND (name IS NOT NULL AND name != '')");
+                    } catch (\Throwable $e) {}
+                }
+                if (in_array('phone', $freshCols) && in_array('phone_number', $freshCols)) {
+                    try {
+                        DB::statement("UPDATE customers SET phone = phone_number WHERE (phone IS NULL OR phone = '') AND (phone_number IS NOT NULL AND phone_number != '')");
+                        DB::statement("UPDATE customers SET phone_number = phone WHERE (phone_number IS NULL OR phone_number = '') AND (phone IS NOT NULL AND phone != '')");
+                    } catch (\Throwable $e) {}
+                }
+                if (in_array('phone', $freshCols) && in_array('customer_phone', $freshCols)) {
+                    try {
+                        DB::statement("UPDATE customers SET phone = customer_phone WHERE (phone IS NULL OR phone = '') AND (customer_phone IS NOT NULL AND customer_phone != '')");
+                        DB::statement("UPDATE customers SET customer_phone = phone WHERE (customer_phone IS NULL OR customer_phone = '') AND (phone IS NOT NULL AND phone != '')");
+                    } catch (\Throwable $e) {}
+                }
+                if (in_array('email', $freshCols) && in_array('customer_email', $freshCols)) {
+                    try {
+                        DB::statement("UPDATE customers SET email = customer_email WHERE (email IS NULL OR email = '') AND (customer_email IS NOT NULL AND customer_email != '')");
+                        DB::statement("UPDATE customers SET customer_email = email WHERE (customer_email IS NULL OR customer_email = '') AND (email IS NOT NULL AND email != '')");
+                    } catch (\Throwable $e) {}
+                }
+                if (in_array('email', $freshCols) && in_array('email_address', $freshCols)) {
+                    try {
+                        DB::statement("UPDATE customers SET email = email_address WHERE (email IS NULL OR email = '') AND (email_address IS NOT NULL AND email_address != '')");
+                        DB::statement("UPDATE customers SET email_address = email WHERE (email_address IS NULL OR email_address = '') AND (email IS NOT NULL AND email != '')");
+                    } catch (\Throwable $e) {}
+                }
+                if (in_array('address', $freshCols) && in_array('customer_address', $freshCols)) {
+                    try {
+                        DB::statement("UPDATE customers SET address = customer_address WHERE (address IS NULL OR address = '') AND (customer_address IS NOT NULL AND customer_address != '')");
+                        DB::statement("UPDATE customers SET customer_address = address WHERE (customer_address IS NULL OR customer_address = '') AND (address IS NOT NULL AND address != '')");
+                    } catch (\Throwable $e) {}
+                }
+            }
+        } catch (\Throwable $e) {
+            Log::warning("ensureCustomersTable warning: " . $e->getMessage());
+        }
     }
 
     /**
-     * Retrieve mock list from session or baseline.
+     * Build customer payload dynamically matching existing table schema.
      */
-    protected function getSessionCustomers()
+    protected function buildCustomerPayload(array $validated, ?string $custId = null): array
     {
-        session()->forget('mock_customers');
-        return [];
+        $cols = [];
+        try {
+            $cols = Schema::getColumnListing('customers');
+        } catch (\Throwable $e) {}
+
+        $tier = strtoupper($validated['tier'] ?? 'REGULAR');
+        if (!in_array($tier, ['GOLD', 'SILVER', 'BRONZE', 'VIP', 'REGULAR'])) {
+            $tier = 'REGULAR';
+        }
+        $status = $validated['status'] ?? 'Active';
+        $registrationDate = $validated['registration_date'] ?? date('Y-m-d');
+        $name = $validated['name'] ?? '';
+        $phone = $validated['phone'] ?? null;
+        $email = $validated['email'] ?? null;
+        $address = $validated['address'] ?? null;
+
+        $payload = [];
+
+        // Check if customer_id is auto_increment
+        $isAutoIncrement = false;
+        try {
+            $colDetails = DB::select("SHOW FULL COLUMNS FROM customers WHERE Field = 'customer_id'");
+            if (!empty($colDetails)) {
+                $extra = strtolower($colDetails[0]->Extra ?? '');
+                $type = strtolower($colDetails[0]->Type ?? '');
+                if (str_contains($extra, 'auto_increment') || str_starts_with($type, 'int')) {
+                    $isAutoIncrement = true;
+                }
+            }
+        } catch (\Throwable $e) {}
+
+        if ($isAutoIncrement) {
+            if (!empty($custId) && is_numeric($custId)) {
+                $payload['customer_id'] = (int)$custId;
+            }
+            // If empty or non-numeric string, omit customer_id so MySQL auto-increments cleanly
+        } else {
+            if (!empty($custId)) {
+                $payload['customer_id'] = $custId;
+            }
+        }
+
+        // Name fields
+        if (in_array('full_name', $cols) || empty($cols)) {
+            $payload['full_name'] = $name;
+        }
+        if (in_array('name', $cols)) {
+            $payload['name'] = $name;
+        }
+
+        // Phone fields
+        if (in_array('phone_number', $cols) || empty($cols)) {
+            $payload['phone_number'] = $phone;
+        }
+        if (in_array('phone', $cols)) {
+            $payload['phone'] = $phone;
+        }
+
+        // Email & Address
+        if (in_array('email', $cols) || empty($cols)) {
+            $payload['email'] = $email;
+        }
+        if (in_array('address', $cols) || empty($cols)) {
+            $payload['address'] = $address;
+        }
+
+        if (empty($cols) || in_array('tier', $cols)) {
+            $payload['tier'] = $tier;
+        }
+        if (empty($cols) || in_array('status', $cols)) {
+            $payload['status'] = $status;
+        }
+        if (empty($cols) || in_array('registration_date', $cols)) {
+            $payload['registration_date'] = $registrationDate;
+        }
+        if (in_array('loyalty_points', $cols)) {
+            $payload['loyalty_points'] = 0;
+        }
+
+        return $payload;
+    }
+
+    /**
+     * Safely find a customer by customer_id or id without causing MySQL 1054 error.
+     */
+    protected function findCustomer($id)
+    {
+        if (empty($id)) {
+            return null;
+        }
+
+        try {
+            $hasCustIdCol = Schema::hasColumn('customers', 'customer_id');
+            $hasIdCol = Schema::hasColumn('customers', 'id');
+
+            // Numeric extraction if like 'C0001'
+            $numericId = null;
+            if (is_numeric($id)) {
+                $numericId = (int)$id;
+            } elseif (preg_match('/^C0*(\d+)$/i', $id, $m)) {
+                $numericId = (int)$m[1];
+            }
+
+            // 1. Try customer_id integer match if numeric
+            if ($hasCustIdCol && $numericId !== null) {
+                $found = Customer::with('orders')->where('customer_id', $numericId)->first();
+                if ($found) return $found;
+            }
+
+            // 2. Try customer_id exact match string
+            if ($hasCustIdCol) {
+                $found = Customer::with('orders')->where('customer_id', $id)->first();
+                if ($found) return $found;
+            }
+
+            // 3. Try id column only if exists
+            if ($hasIdCol) {
+                $found = Customer::with('orders')->where('id', $id)->first();
+                if ($found) return $found;
+            }
+        } catch (\Throwable $e) {
+            Log::warning("findCustomer error: " . $e->getMessage());
+        }
+
+        return null;
     }
 
     /**
@@ -33,6 +280,8 @@ class CustomerController extends Controller
      */
     public function index(Request $request)
     {
+        $this->ensureCustomersTable();
+
         $search = trim($request->input('search', ''));
         $filter = $request->input('filter', 'All');
         $selectedId = $request->input('selected_id');
@@ -58,65 +307,39 @@ class CustomerController extends Controller
             }
 
             $totalCustomers = $query->count();
-            $customers = $query->orderBy('customer_id', 'asc')
-                               ->paginate($perPage)
-                               ->appends($request->all());
+
+            // Order newest customers first so created customer shows on page 1
+            $orderCol = 'customer_id';
+            try {
+                if (Schema::hasColumn('customers', 'created_at')) {
+                    $orderCol = 'created_at';
+                } elseif (Schema::hasColumn('customers', 'id')) {
+                    $orderCol = 'id';
+                }
+            } catch (\Throwable $e) {}
+
+            $customers = $query->orderBy($orderCol, 'desc')
+                                ->paginate($perPage)
+                                ->appends($request->all());
 
             // Determine active/selected customer for the Aside panel
             $selectedCustomer = null;
             if ($selectedId) {
-                $selectedCustomer = Customer::with('orders')->find($selectedId)
-                    ?? Customer::with('orders')->where('customer_id', $selectedId)->first();
+                $selectedCustomer = $this->findCustomer($selectedId);
             }
             if (!$selectedCustomer && $customers->count() > 0) {
                 $selectedCustomer = $customers->first();
             }
         } else {
-            // Memory/Session collection fallback
-            $allData = collect($this->getSessionCustomers());
-
-            // Search
-            if (!empty($search)) {
-                $searchLower = strtolower($search);
-                $allData = $allData->filter(function ($item) use ($searchLower) {
-                    return str_contains(strtolower($item['customer_id']), $searchLower)
-                        || str_contains(strtolower($item['name']), $searchLower)
-                        || str_contains(strtolower($item['phone']), $searchLower)
-                        || str_contains(strtolower($item['email']), $searchLower)
-                        || str_contains(strtolower($item['address']), $searchLower);
-                });
-            }
-
-            // Filter (All, Active, Inactive, GOLD, SILVER, BRONZE)
-            if (!empty($filter) && $filter !== 'All' && $filter !== 'All Customers') {
-                $filterUpper = strtoupper($filter);
-                $allData = $allData->filter(function ($item) use ($filterUpper) {
-                    return strtoupper($item['tier']) === $filterUpper
-                        || strtoupper($item['status']) === $filterUpper;
-                });
-            }
-
-            $totalCustomers = $allData->count();
-            $offset = ($page - 1) * $perPage;
-            $itemsForCurrentPage = $allData->slice($offset, $perPage)->values();
-
             $customers = new LengthAwarePaginator(
-                $itemsForCurrentPage,
-                $totalCustomers,
+                [],
+                0,
                 $perPage,
                 $page,
                 ['path' => $request->url(), 'query' => $request->query()]
             );
-
-            // Determine active customer for aside
+            $totalCustomers = 0;
             $selectedCustomer = null;
-            if ($selectedId) {
-                $selectedCustomer = $allData->firstWhere('id', (int)$selectedId)
-                    ?? $allData->firstWhere('customer_id', $selectedId);
-            }
-            if (!$selectedCustomer && $itemsForCurrentPage->count() > 0) {
-                $selectedCustomer = $itemsForCurrentPage->first();
-            }
         }
 
         // Return JSON if requested via AJAX
@@ -153,6 +376,8 @@ class CustomerController extends Controller
      */
     public function store(Request $request)
     {
+        $this->ensureCustomersTable();
+
         $validated = $request->validate([
             'customer_id' => 'nullable|string|max:50',
             'name' => 'required|string|max:255',
@@ -171,88 +396,44 @@ class CustomerController extends Controller
             $hasDb = false;
         }
 
-        $tier = strtoupper($validated['tier'] ?? 'REGULAR');
-        if (!in_array($tier, ['GOLD', 'SILVER', 'BRONZE', 'VIP', 'REGULAR'])) {
-            $tier = 'REGULAR';
-        }
-        $status = $validated['status'] ?? 'Active';
-        $registrationDate = $validated['registration_date'] ?? date('Y-m-d');
-
+        $inputCustId = $validated['customer_id'] ?? null;
         $customer = null;
-        $custId = $validated['customer_id'] ?? null;
 
         if ($hasDb) {
-            try {
-                if (empty($custId)) {
-                    $nextNum = 1;
-                    if (Schema::hasColumn('customers', 'id')) {
-                        $lastCust = Customer::orderBy('id', 'desc')->first();
-                        $nextNum = $lastCust ? ($lastCust->id + 1) : 1;
-                    } elseif (Schema::hasColumn('customers', 'customer_id')) {
-                        $lastCust = Customer::orderBy('customer_id', 'desc')->first();
-                        if ($lastCust && preg_match('/(\d+)/', $lastCust->customer_id, $matches)) {
-                            $nextNum = ((int)$matches[1]) + 1;
-                        } else {
-                            $nextNum = Customer::count() + 1;
-                        }
-                    }
-                    $custId = 'C' . str_pad($nextNum, 4, '0', STR_PAD_LEFT);
-                }
+            $payload = $this->buildCustomerPayload($validated, $inputCustId);
 
-                $customer = Customer::create([
-                    'customer_id' => $custId,
-                    'name' => $validated['name'],
-                    'phone' => $validated['phone'],
-                    'email' => $validated['email'],
-                    'address' => $validated['address'],
-                    'tier' => $tier,
-                    'status' => $status,
-                    'registration_date' => $registrationDate,
-                ]);
+            Log::info("ATTEMPTING CUSTOMER INSERT PAYLOAD: " . json_encode($payload));
+
+            try {
+                $customer = Customer::create($payload);
+                Log::info("CUSTOMER CREATED VIA ELOQUENT: ID=" . ($customer->customer_id ?? 'unknown'));
             } catch (\Throwable $e) {
-                Log::warning("Customer DB store failed, falling back to session: " . $e->getMessage());
-                $customer = null;
+                Log::warning("Customer Eloquent create warning: " . $e->getMessage() . ". Trying DB::table insert...");
+                try {
+                    $payload['created_at'] = now();
+                    $payload['updated_at'] = now();
+                    $newId = DB::table('customers')->insertGetId($payload);
+                    Log::info("CUSTOMER INSERTED VIA DB::table: ID=" . $newId);
+                    $customer = Customer::find($newId) ?? $this->findCustomer($newId);
+                } catch (\Throwable $dbe) {
+                    Log::error("Customer DB direct insert failed: " . $dbe->getMessage());
+                }
             }
         }
 
-        // Always ensure customer exists in session mock data as well
-        $list = $this->getSessionCustomers();
-        $maxId = collect($list)->max('id') ?? 0;
-        $newId = $customer && isset($customer->id) ? $customer->id : ($maxId + 1);
-        if (empty($custId)) {
-            $custId = 'C' . str_pad($newId, 4, '0', STR_PAD_LEFT);
-        }
-
-        $sessionRecord = [
-            'id' => $newId,
-            'customer_id' => $custId,
-            'name' => $validated['name'],
-            'phone' => $validated['phone'],
-            'email' => $validated['email'],
-            'address' => $validated['address'],
-            'tier' => $tier,
-            'status' => $status,
-            'avatar' => null,
-            'registration_date' => $registrationDate,
-            'orders' => []
-        ];
-
-        array_unshift($list, $sessionRecord);
-        session(['mock_customers' => $list]);
-
-        $selectedKey = $customer ? ($customer->id ?? $customer->customer_id ?? $newId) : $newId;
+        $selectedKey = $customer ? ($customer->customer_id ?? 1) : 1;
 
         if ($request->ajax() || $request->wantsJson()) {
             return response()->json([
                 'success' => true,
-                'message' => "Customer {$validated['name']} ({$custId}) registered successfully!",
-                'customer' => $customer ?? $sessionRecord,
+                'message' => "Customer {$validated['name']} registered successfully!",
+                'customer' => $customer,
                 'selected_id' => $selectedKey
             ]);
         }
 
         return redirect()->route('customers.index', ['selected_id' => $selectedKey])
-                         ->with('success', "Customer {$validated['name']} ({$custId}) registered successfully!");
+                         ->with('success', "Customer {$validated['name']} registered successfully!");
     }
 
     /**
@@ -264,6 +445,8 @@ class CustomerController extends Controller
      */
     public function show(Request $request, $id)
     {
+        $this->ensureCustomersTable();
+
         $hasDb = false;
         try {
             $hasDb = Schema::hasTable('customers');
@@ -272,8 +455,7 @@ class CustomerController extends Controller
         }
 
         if ($hasDb) {
-            $customer = Customer::with('orders')->find($id)
-                ?? Customer::with('orders')->where('customer_id', $id)->first();
+            $customer = $this->findCustomer($id);
             
             if (!$customer) {
                 return response()->json(['error' => 'Customer not found'], 404);
@@ -282,23 +464,11 @@ class CustomerController extends Controller
             return response()->json([
                 'success' => true,
                 'customer' => $customer,
-                'orders' => $customer->orders
-            ]);
-        } else {
-            $list = $this->getSessionCustomers();
-            $customer = collect($list)->firstWhere('id', (int)$id)
-                ?? collect($list)->firstWhere('customer_id', $id);
-
-            if (!$customer) {
-                return response()->json(['error' => 'Customer not found'], 404);
-            }
-
-            return response()->json([
-                'success' => true,
-                'customer' => $customer,
-                'orders' => $customer['orders'] ?? []
+                'orders' => $customer->orders ?? []
             ]);
         }
+
+        return response()->json(['error' => 'Customer not found'], 404);
     }
 
     /**
@@ -310,6 +480,8 @@ class CustomerController extends Controller
      */
     public function update(Request $request, $id)
     {
+        $this->ensureCustomersTable();
+
         $validated = $request->validate([
             'name' => 'nullable|string|max:255',
             'phone' => 'nullable|string|max:50',
@@ -320,14 +492,6 @@ class CustomerController extends Controller
             'registration_date' => 'nullable|date',
         ]);
 
-        if (isset($validated['tier'])) {
-            $tier = strtoupper($validated['tier']);
-            if (!in_array($tier, ['GOLD', 'SILVER', 'BRONZE', 'VIP', 'REGULAR'])) {
-                $tier = 'REGULAR';
-            }
-            $validated['tier'] = $tier;
-        }
-
         $hasDb = false;
         try {
             $hasDb = Schema::hasTable('customers');
@@ -337,53 +501,28 @@ class CustomerController extends Controller
 
         if ($hasDb) {
             try {
-                $customer = null;
-                if (Schema::hasColumn('customers', 'id')) {
-                    $customer = Customer::find($id);
-                }
-                if (!$customer && Schema::hasColumn('customers', 'customer_id')) {
-                    $customer = Customer::where('customer_id', $id)->first();
-                }
+                $customer = $this->findCustomer($id);
                 if ($customer) {
-                    $customer->update(array_filter($validated, fn($v) => !is_null($v)));
+                    $payload = $this->buildCustomerPayload($validated, $customer->customer_id ?? $id);
+                    $payload = array_filter($payload, fn($v) => !is_null($v));
+                    $customer->update($payload);
                 }
             } catch (\Throwable $e) {
-                Log::warning("Customer DB update failed, continuing with session: " . $e->getMessage());
+                Log::warning("Customer DB update failed: " . $e->getMessage());
             }
         }
 
-        // Always update in session mock data as well
-        $list = $this->getSessionCustomers();
-        $updated = false;
-
-        foreach ($list as &$item) {
-            if ($item['id'] == $id || $item['customer_id'] == $id) {
-                if (isset($validated['name'])) $item['name'] = $validated['name'];
-                if (isset($validated['phone'])) $item['phone'] = $validated['phone'];
-                if (isset($validated['email'])) $item['email'] = $validated['email'];
-                if (isset($validated['address'])) $item['address'] = $validated['address'];
-                if (isset($validated['tier'])) $item['tier'] = $validated['tier'];
-                if (isset($validated['status'])) $item['status'] = $validated['status'];
-                if (isset($validated['registration_date'])) $item['registration_date'] = $validated['registration_date'];
-                $updated = true;
-                break;
-            }
-        }
-        unset($item);
-
-        if ($updated) {
-            session(['mock_customers' => $list]);
-        }
+        $custName = $validated['name'] ?? 'Customer';
 
         if ($request->ajax() || $request->wantsJson()) {
             return response()->json([
                 'success' => true,
-                'message' => "Customer {$validated['name']} updated successfully!"
+                'message' => "Customer {$custName} updated successfully!"
             ]);
         }
 
         return redirect()->route('customers.index', ['selected_id' => $id])
-                         ->with('success', "Customer {$validated['name']} updated successfully!");
+                         ->with('success', "Customer {$custName} updated successfully!");
     }
 
     /**
@@ -395,6 +534,8 @@ class CustomerController extends Controller
      */
     public function destroy(Request $request, $id)
     {
+        $this->ensureCustomersTable();
+
         $hasDb = false;
         try {
             $hasDb = Schema::hasTable('customers');
@@ -404,13 +545,7 @@ class CustomerController extends Controller
 
         if ($hasDb) {
             try {
-                $customer = null;
-                if (Schema::hasColumn('customers', 'id')) {
-                    $customer = Customer::find($id);
-                }
-                if (!$customer && Schema::hasColumn('customers', 'customer_id')) {
-                    $customer = Customer::where('customer_id', $id)->first();
-                }
+                $customer = $this->findCustomer($id);
                 if ($customer) {
                     $customer->delete();
                 }
@@ -418,14 +553,6 @@ class CustomerController extends Controller
                 Log::warning("Customer DB delete failed: " . $e->getMessage());
             }
         }
-
-        // Always delete from session mock data as well
-        $list = $this->getSessionCustomers();
-        $filtered = collect($list)->reject(function ($item) use ($id) {
-            return $item['id'] == $id || $item['customer_id'] == $id;
-        })->values()->all();
-
-        session(['mock_customers' => $filtered]);
 
         if ($request->ajax() || $request->wantsJson()) {
             return response()->json([
@@ -448,6 +575,8 @@ class CustomerController extends Controller
      */
     public function orders(Request $request, $id)
     {
+        $this->ensureCustomersTable();
+
         $hasDb = false;
         try {
             $hasDb = Schema::hasTable('customers');
@@ -456,14 +585,12 @@ class CustomerController extends Controller
         }
 
         if ($hasDb) {
-            $orders = CustomerOrder::where('customer_id', $id)->orderBy('order_date', 'desc')->get();
-            return response()->json(['success' => true, 'orders' => $orders]);
-        } else {
-            $list = $this->getSessionCustomers();
-            $customer = collect($list)->firstWhere('id', (int)$id)
-                ?? collect($list)->firstWhere('customer_id', $id);
-            $orders = $customer['orders'] ?? [];
+            $customer = $this->findCustomer($id);
+            $custKey = $customer ? ($customer->customer_id ?? $customer->id ?? $id) : $id;
+            $orders = CustomerOrder::where('customer_id', $custKey)->orderBy('order_date', 'desc')->get();
             return response()->json(['success' => true, 'orders' => $orders]);
         }
+
+        return response()->json(['success' => true, 'orders' => []]);
     }
 }

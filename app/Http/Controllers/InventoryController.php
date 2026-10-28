@@ -5,166 +5,11 @@ namespace App\Http\Controllers;
 use App\Models\Inventory;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Schema;
-use Illuminate\Pagination\LengthAwarePaginator;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 
 class InventoryController extends Controller
 {
-    /**
-     * Official 6 baseline inventory items matching the screenshot.
-     */
-    private function getDefaultInventory(): array
-    {
-        return [
-            [
-                'id' => 1,
-                'name' => 'Detergent',
-                'category' => 'Cleaning',
-                'stock' => 50,
-                'unit' => 'L',
-                'status' => 'In Stock',
-                'min_stock' => 20,
-                'notes' => 'Commercial grade liquid laundry detergent for heavy soiled wash cycles.',
-                'supplier' => 'EcoChem Supplies Co.',
-                'unit_price' => 12.50,
-                'last_restocked' => '2026-10-01',
-            ],
-            [
-                'id' => 2,
-                'name' => 'Softener',
-                'category' => 'Cleaning',
-                'stock' => 40,
-                'unit' => 'L',
-                'status' => 'In Stock',
-                'min_stock' => 15,
-                'notes' => 'Floral scented fabric conditioner for delicate and everyday fabrics.',
-                'supplier' => 'SilkTouch Chemical Ltd',
-                'unit_price' => 10.00,
-                'last_restocked' => '2026-10-02',
-            ],
-            [
-                'id' => 3,
-                'name' => 'Bleach',
-                'category' => 'Cleaning',
-                'stock' => 10,
-                'unit' => 'L',
-                'status' => 'Low Stock',
-                'min_stock' => 15,
-                'notes' => 'Color-safe chlorine bleach for stain removal on white linens.',
-                'supplier' => 'CleanMaster Ind.',
-                'unit_price' => 8.00,
-                'last_restocked' => '2026-09-28',
-            ],
-            [
-                'id' => 4,
-                'name' => 'Packing Bags',
-                'category' => 'Packaging',
-                'stock' => 100,
-                'unit' => 'Pcs',
-                'status' => 'In Stock',
-                'min_stock' => 30,
-                'notes' => 'Heavy-duty polythene laundry carry bags with sealed base.',
-                'supplier' => 'Khmer Pack Solutions',
-                'unit_price' => 0.25,
-                'last_restocked' => '2026-10-03',
-            ],
-            [
-                'id' => 5,
-                'name' => 'Hangers',
-                'category' => 'Accessories',
-                'stock' => 200,
-                'unit' => 'Pcs',
-                'status' => 'In Stock',
-                'min_stock' => 50,
-                'notes' => 'Heavy gauge galvanized wire & plastic finished garment hangers.',
-                'supplier' => 'Universal Hanger Ltd',
-                'unit_price' => 0.15,
-                'last_restocked' => '2026-10-02',
-            ],
-            [
-                'id' => 6,
-                'name' => 'Cleaning Chemicals',
-                'category' => 'Chemicals',
-                'stock' => 15,
-                'unit' => 'L',
-                'status' => 'Low Stock',
-                'min_stock' => 20,
-                'notes' => 'Enzyme-based grease and tannin chemical spotting reagents.',
-                'supplier' => 'ProWash Chemicals Global',
-                'unit_price' => 22.00,
-                'last_restocked' => '2026-09-25',
-            ],
-        ];
-    }
-
-    /**
-     * Retrieve active inventory items with fallback strategy.
-     */
-    public function getInventoryData()
-    {
-        $jsonFile = storage_path('app/inventory.json');
-        $defaults = collect($this->getDefaultInventory())->map(function ($item) {
-            return (object)$item;
-        });
-
-        // 1. If database table exists and has rows, load from DB
-        try {
-            if (Schema::hasTable('inventories') && Inventory::count() > 0) {
-                return Inventory::all()->map(function ($item) {
-                    return (object)$item->toArray();
-                });
-            }
-        } catch (\Throwable $e) {}
-
-        // 2. Load from storage/app/inventory.json
-        if (file_exists($jsonFile) && !request()->has('reset')) {
-            try {
-                $content = file_get_contents($jsonFile);
-                $decoded = json_decode($content, true);
-                if (is_array($decoded) && count($decoded) > 0) {
-                    $coll = collect($decoded)->map(function ($item) {
-                        return is_array($item) ? (object)$item : $item;
-                    });
-                    if ($coll->contains('name', 'Detergent')) {
-                        session(['laundry_inventory_items' => $coll->toArray()]);
-                        return $coll;
-                    }
-                }
-            } catch (\Throwable $e) {}
-        }
-
-        // 3. Load from Session
-        if (session()->has('laundry_inventory_items') && !request()->has('reset')) {
-            $sess = session('laundry_inventory_items');
-            $coll = collect($sess)->map(function ($item) {
-                return is_array($item) ? (object)$item : $item;
-            });
-            if ($coll->contains('name', 'Detergent')) {
-                $this->saveInventoryStorage($coll);
-                return $coll;
-            }
-        }
-
-        // 4. Default Seed
-        $this->saveInventoryStorage($defaults);
-        session(['laundry_inventory_items' => $defaults->toArray()]);
-        return $defaults;
-    }
-
-    /**
-     * Save inventory collection to disk and session.
-     */
-    protected function saveInventoryStorage($collection)
-    {
-        try {
-            $jsonFile = storage_path('app/inventory.json');
-            $dir = dirname($jsonFile);
-            if (!file_exists($dir)) {
-                mkdir($dir, 0777, true);
-            }
-            file_put_contents($jsonFile, json_encode($collection->toArray(), JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE));
-        } catch (\Throwable $e) {}
-    }
-
     /**
      * Compute item status from stock and min_stock.
      */
@@ -182,24 +27,153 @@ class InventoryController extends Controller
     }
 
     /**
-     * Display inventory dashboard list.
+     * Ensure database table exists without injecting mock data.
+     */
+    protected function ensureTableExists(): void
+    {
+        try {
+            $model = new Inventory();
+            $table = $model->getTable();
+
+            // Create table if neither inventories, inventory nor inventory_items exist
+            if (!Schema::hasTable($table)) {
+                Schema::create('inventories', function ($t) {
+                    $t->id();
+                    $t->string('name');
+                    $t->string('category')->default('Cleaning');
+                    $t->integer('stock')->default(0);
+                    $t->string('unit')->default('L');
+                    $t->string('status')->default('In Stock');
+                    $t->integer('min_stock')->default(15);
+                    $t->text('notes')->nullable();
+                    $t->string('supplier')->default('Standard Supplier');
+                    $t->decimal('unit_price', 10, 2)->default(0.00);
+                    $t->date('last_restocked')->nullable();
+                    $t->timestamps();
+                });
+            }
+        } catch (\Throwable $e) {
+            Log::error('Inventory table check error: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Map request data to matching table columns.
+     */
+    protected function buildItemPayload(Request $request, string $table, ?int $existingStock = null): array
+    {
+        $cols = Schema::getColumnListing($table);
+        $payload = [];
+
+        $name = trim($request->input('name') ?? $request->input('item_name', ''));
+        $category = trim($request->input('category', 'Cleaning'));
+        $stock = (int)($request->input('stock') ?? $request->input('quantity', $existingStock ?? 0));
+        $unit = trim($request->input('unit') ?? $request->input('unit_of_measure', 'L'));
+        $minStock = (int)$request->input('min_stock', 15);
+        $status = $this->determineStatus($stock, $minStock);
+        $notes = $request->input('notes') ?? $request->input('description', '');
+        $supplier = $request->input('supplier') ?? $request->input('supplier_name', 'Standard Supplier');
+        $unitPrice = (float)($request->input('unit_price') ?? $request->input('price', 0.00));
+
+        if (in_array('name', $cols)) $payload['name'] = $name;
+        if (in_array('item_name', $cols)) $payload['item_name'] = $name;
+
+        if (in_array('category', $cols)) $payload['category'] = $category;
+        if (in_array('category_name', $cols)) $payload['category_name'] = $category;
+
+        if (in_array('stock', $cols)) $payload['stock'] = $stock;
+        if (in_array('quantity', $cols)) $payload['quantity'] = $stock;
+        if (in_array('qty', $cols)) $payload['qty'] = $stock;
+
+        if (in_array('unit', $cols)) $payload['unit'] = $unit;
+        if (in_array('unit_of_measure', $cols)) $payload['unit_of_measure'] = $unit;
+        if (in_array('uom', $cols)) $payload['uom'] = $unit;
+
+        if (in_array('status', $cols)) $payload['status'] = $status;
+
+        if (in_array('min_stock', $cols)) $payload['min_stock'] = $minStock;
+        if (in_array('minimum_stock', $cols)) $payload['minimum_stock'] = $minStock;
+        if (in_array('reorder_level', $cols)) $payload['reorder_level'] = $minStock;
+
+        if (in_array('notes', $cols)) $payload['notes'] = $notes;
+        if (in_array('description', $cols)) $payload['description'] = $notes;
+
+        if (in_array('supplier', $cols)) $payload['supplier'] = $supplier;
+        if (in_array('supplier_name', $cols)) $payload['supplier_name'] = $supplier;
+
+        if (in_array('unit_price', $cols)) $payload['unit_price'] = $unitPrice;
+        if (in_array('price', $cols)) $payload['price'] = $unitPrice;
+        if (in_array('cost', $cols)) $payload['cost'] = $unitPrice;
+
+        if (in_array('last_restocked', $cols)) $payload['last_restocked'] = now()->toDateString();
+        if (in_array('restocked_at', $cols)) $payload['restocked_at'] = now()->toDateString();
+
+        return $payload;
+    }
+
+    /**
+     * Display inventory dashboard list directly from MySQL database.
      */
     public function index(Request $request)
     {
-        $search = $request->input('search');
+        $this->ensureTableExists();
+
+        $search = trim($request->input('search', ''));
         $categoryFilter = $request->input('category', 'all');
         $statusFilter = $request->input('status', 'all');
 
-        $all = $this->getInventoryData();
+        $model = new Inventory();
+        $table = $model->getTable();
+        $cols = Schema::getColumnListing($table);
 
-        // Calculate card stats
-        $totalItems = $all->count();
-        $inStockCount = $all->filter(function ($item) {
-            return ($item->status ?? '') === 'In Stock';
-        })->count();
-        $lowStockCount = $all->filter(function ($item) {
-            return in_array($item->status ?? '', ['Low Stock', 'Out of Stock']);
-        })->count();
+        $query = Inventory::query();
+
+        // 1. Search Filter
+        if (!empty($search)) {
+            $query->where(function ($q) use ($search, $cols) {
+                $hasWhere = false;
+                if (in_array('name', $cols)) {
+                    $q->where('name', 'like', "%{$search}%");
+                    $hasWhere = true;
+                }
+                if (in_array('item_name', $cols)) {
+                    $hasWhere ? $q->orWhere('item_name', 'like', "%{$search}%") : $q->where('item_name', 'like', "%{$search}%");
+                    $hasWhere = true;
+                }
+                if (in_array('category', $cols)) {
+                    $hasWhere ? $q->orWhere('category', 'like', "%{$search}%") : $q->where('category', 'like', "%{$search}%");
+                    $hasWhere = true;
+                }
+                if (in_array('unit', $cols)) {
+                    $hasWhere ? $q->orWhere('unit', 'like', "%{$search}%") : $q->where('unit', 'like', "%{$search}%");
+                    $hasWhere = true;
+                }
+                if (in_array('supplier', $cols)) {
+                    $hasWhere ? $q->orWhere('supplier', 'like', "%{$search}%") : $q->where('supplier', 'like', "%{$search}%");
+                }
+            });
+        }
+
+        // 2. Category Filter
+        if (!empty($categoryFilter) && $categoryFilter !== 'all' && $categoryFilter !== 'All Categories') {
+            if (in_array('category', $cols)) {
+                $query->where('category', $categoryFilter);
+            } elseif (in_array('category_name', $cols)) {
+                $query->where('category_name', $categoryFilter);
+            }
+        }
+
+        // 3. Status Filter
+        if (!empty($statusFilter) && $statusFilter !== 'all' && $statusFilter !== 'All Status') {
+            if (in_array('status', $cols)) {
+                $query->where('status', $statusFilter);
+            }
+        }
+
+        // Live Real Database Metrics
+        $totalItems = Inventory::count();
+        $inStockCount = Inventory::where('status', 'In Stock')->count();
+        $lowStockCount = Inventory::whereIn('status', ['Low Stock', 'Out of Stock'])->count();
 
         $stats = [
             'total' => $totalItems,
@@ -207,42 +181,16 @@ class InventoryController extends Controller
             'low_stock' => $lowStockCount,
         ];
 
-        // Filter items
-        $filtered = $all->filter(function ($item) use ($search, $categoryFilter, $statusFilter) {
-            if ($search) {
-                $s = strtolower(trim($search));
-                $nameMatch = str_contains(strtolower($item->name ?? ''), $s);
-                $catMatch = str_contains(strtolower($item->category ?? ''), $s);
-                $unitMatch = str_contains(strtolower($item->unit ?? ''), $s);
-                $statusMatch = str_contains(strtolower($item->status ?? ''), $s);
-                if (!$nameMatch && !$catMatch && !$unitMatch && !$statusMatch) {
-                    return false;
-                }
-            }
+        $pk = $model->getKeyName();
+        $items = $query->orderBy($pk, 'asc')->get();
 
-            if ($categoryFilter && $categoryFilter !== 'all' && $categoryFilter !== 'All Categories') {
-                if (strtolower($item->category ?? '') !== strtolower($categoryFilter)) {
-                    return false;
-                }
-            }
-
-            if ($statusFilter && $statusFilter !== 'all' && $statusFilter !== 'All Status') {
-                if (strtolower($item->status ?? '') !== strtolower($statusFilter)) {
-                    return false;
-                }
-            }
-
-            return true;
-        })->values();
-
-        // Default categories and statuses for dropdown filters
         $categories = ['Cleaning', 'Packaging', 'Accessories', 'Chemicals'];
         $statuses = ['In Stock', 'Low Stock', 'Out of Stock'];
 
         $viewName = view()->exists('pages.inventory') ? 'pages.inventory' : 'inventory';
 
         return view($viewName, [
-            'items' => $filtered,
+            'items' => $items,
             'stats' => $stats,
             'categories' => $categories,
             'statuses' => $statuses,
@@ -263,9 +211,11 @@ class InventoryController extends Controller
             $id = $optionalId ?? $request->route('id') ?? $request->route('inventory');
         }
 
-        $id = is_object($id) ? ($id->id ?? 1) : $id;
-        $all = $this->getInventoryData();
-        $item = $all->firstWhere('id', (int)$id);
+        $id = is_object($id) ? ($id->id ?? $id->inventory_id ?? 1) : $id;
+        $model = new Inventory();
+        $pk = $model->getKeyName();
+
+        $item = Inventory::where($pk, $id)->first() ?: Inventory::find($id);
 
         return response()->json([
             'success' => (bool)$item,
@@ -274,7 +224,7 @@ class InventoryController extends Controller
     }
 
     /**
-     * Add Laundry Supplies / Create new item.
+     * Add Laundry Supplies / Create new item directly into MySQL.
      */
     public function store(Request $request)
     {
@@ -296,42 +246,18 @@ class InventoryController extends Controller
             'unit_price' => 'nullable|numeric|min:0',
         ]);
 
-        $stock = (int)$request->input('stock', 0);
-        $minStock = (int)$request->input('min_stock', 15);
-        $status = $this->determineStatus($stock, $minStock);
+        $this->ensureTableExists();
 
-        $all = $this->getInventoryData();
-        $nextId = ($all->max('id') ?? 6) + 1;
+        $model = new Inventory();
+        $table = $model->getTable();
+        $payload = $this->buildItemPayload($request, $table);
 
-        $newItem = (object)[
-            'id' => $nextId,
-            'name' => trim($request->name),
-            'category' => trim($request->category),
-            'stock' => $stock,
-            'unit' => trim($request->unit),
-            'status' => $status,
-            'min_stock' => $minStock,
-            'notes' => $request->notes ?? '',
-            'supplier' => $request->supplier ?? 'Standard Supplier',
-            'unit_price' => (float)($request->unit_price ?? 0.00),
-            'last_restocked' => date('Y-m-d'),
-        ];
-
-        // Database save
-        try {
-            if (Schema::hasTable('inventories')) {
-                Inventory::create((array)$newItem);
-            }
-        } catch (\Throwable $e) {}
-
-        $all->push($newItem);
-        $this->saveInventoryStorage($all);
-        session(['laundry_inventory_items' => $all->toArray()]);
+        $newItem = Inventory::create($payload);
 
         if ($request->ajax() || $request->wantsJson()) {
             return response()->json([
                 'success' => true,
-                'message' => 'Supplies added successfully!',
+                'message' => 'Supplies added successfully to database!',
                 'item' => $newItem
             ]);
         }
@@ -340,11 +266,11 @@ class InventoryController extends Controller
     }
 
     /**
-     * Update Inventory Item.
+     * Update Inventory Item directly in MySQL.
      */
     public function update(Request $request, $id)
     {
-        $id = is_object($id) ? ($id->id ?? 1) : $id;
+        $id = is_object($id) ? ($id->id ?? $id->inventory_id ?? 1) : $id;
 
         $request->validate([
             'name' => 'required|string|max:255',
@@ -357,103 +283,65 @@ class InventoryController extends Controller
             'unit_price' => 'nullable|numeric|min:0',
         ]);
 
-        $stock = (int)$request->input('stock', 0);
-        $minStock = (int)$request->input('min_stock', 15);
-        $status = $this->determineStatus($stock, $minStock);
+        $model = new Inventory();
+        $pk = $model->getKeyName();
+        $item = Inventory::where($pk, $id)->first() ?: Inventory::find($id);
 
-        // Database update
-        try {
-            if (Schema::hasTable('inventories')) {
-                $dbItem = Inventory::find($id);
-                if ($dbItem) {
-                    $dbItem->update([
-                        'name' => $request->name,
-                        'category' => $request->category,
-                        'stock' => $stock,
-                        'unit' => $request->unit,
-                        'status' => $status,
-                        'min_stock' => $minStock,
-                        'notes' => $request->notes,
-                        'supplier' => $request->supplier,
-                        'unit_price' => (float)($request->unit_price ?? $dbItem->unit_price),
-                    ]);
-                }
-            }
-        } catch (\Throwable $e) {}
-
-        $all = $this->getInventoryData()->map(function ($item) use ($id, $request, $stock, $minStock, $status) {
-            if ($item->id == $id) {
-                $item->name = $request->name;
-                $item->category = $request->category;
-                $item->stock = $stock;
-                $item->unit = $request->unit;
-                $item->status = $status;
-                $item->min_stock = $minStock;
-                $item->notes = $request->notes ?? $item->notes ?? '';
-                if ($request->has('supplier')) {
-                    $item->supplier = $request->supplier;
-                }
-                if ($request->has('unit_price')) {
-                    $item->unit_price = (float)$request->unit_price;
-                }
-            }
-            return $item;
-        });
-
-        $this->saveInventoryStorage($all);
-        session(['laundry_inventory_items' => $all->toArray()]);
+        if ($item) {
+            $table = $model->getTable();
+            $payload = $this->buildItemPayload($request, $table, $item->stock);
+            $item->update($payload);
+        }
 
         if ($request->ajax() || $request->wantsJson()) {
             return response()->json([
                 'success' => true,
-                'message' => 'Inventory updated successfully!'
+                'message' => 'Supplies updated successfully in database!',
+                'item' => $item
             ]);
         }
 
-        return redirect()->back()->with('success', 'Item "' . $request->name . '" updated successfully!');
+        return redirect()->back()->with('success', 'Supplies updated successfully!');
     }
 
     /**
-     * Stock In function: Increases quantity and updates status.
+     * Stock In function: Adds quantity directly into MySQL database.
      */
     public function stockIn(Request $request, $id)
     {
-        $id = is_object($id) ? ($id->id ?? 1) : $id;
-        $qty = abs((int)$request->input('quantity', 10));
+        $id = is_object($id) ? ($id->id ?? $id->inventory_id ?? 1) : $id;
+        $qty = abs((int)$request->input('quantity', 1));
 
-        $updatedItem = null;
+        $model = new Inventory();
+        $pk = $model->getKeyName();
+        $item = Inventory::where($pk, $id)->first() ?: Inventory::find($id);
 
-        // DB update
-        try {
-            if (Schema::hasTable('inventories')) {
-                $dbItem = Inventory::find($id);
-                if ($dbItem) {
-                    $dbItem->stock += $qty;
-                    $dbItem->last_restocked = date('Y-m-d');
-                    $dbItem->updateStatusBasedOnStock();
-                    $updatedItem = $dbItem;
-                }
+        if ($item) {
+            $table = $model->getTable();
+            $cols = Schema::getColumnListing($table);
+            $stockCol = in_array('stock', $cols) ? 'stock' : (in_array('quantity', $cols) ? 'quantity' : 'qty');
+
+            $currentStock = (int)($item->{$stockCol} ?? 0);
+            $newStock = $currentStock + $qty;
+            $minStock = $item->min_stock ?: 15;
+            $newStatus = $this->determineStatus($newStock, $minStock);
+
+            $updates = [$stockCol => $newStock];
+            if (in_array('status', $cols)) {
+                $updates['status'] = $newStatus;
             }
-        } catch (\Throwable $e) {}
-
-        $all = $this->getInventoryData()->map(function ($item) use ($id, $qty, &$updatedItem) {
-            if ($item->id == $id) {
-                $item->stock += $qty;
-                $item->last_restocked = date('Y-m-d');
-                $item->status = $this->determineStatus($item->stock, $item->min_stock ?? 15);
-                $updatedItem = $item;
+            if (in_array('last_restocked', $cols)) {
+                $updates['last_restocked'] = now()->toDateString();
             }
-            return $item;
-        });
 
-        $this->saveInventoryStorage($all);
-        session(['laundry_inventory_items' => $all->toArray()]);
+            $item->update($updates);
+        }
 
         if ($request->ajax() || $request->wantsJson()) {
             return response()->json([
                 'success' => true,
-                'message' => "Stock in of +{$qty} successfully recorded!",
-                'item' => $updatedItem
+                'message' => "Stock in of +{$qty} successfully recorded in database!",
+                'item' => $item
             ]);
         }
 
@@ -461,44 +349,40 @@ class InventoryController extends Controller
     }
 
     /**
-     * Stock Out function: Deducts quantity and triggers low stock alert if needed.
+     * Stock Out function: Deducts quantity directly from MySQL database.
      */
     public function stockOut(Request $request, $id)
     {
-        $id = is_object($id) ? ($id->id ?? 1) : $id;
-        $qty = abs((int)$request->input('quantity', 5));
+        $id = is_object($id) ? ($id->id ?? $id->inventory_id ?? 1) : $id;
+        $qty = abs((int)$request->input('quantity', 1));
 
-        $updatedItem = null;
+        $model = new Inventory();
+        $pk = $model->getKeyName();
+        $item = Inventory::where($pk, $id)->first() ?: Inventory::find($id);
 
-        // DB update
-        try {
-            if (Schema::hasTable('inventories')) {
-                $dbItem = Inventory::find($id);
-                if ($dbItem) {
-                    $dbItem->stock = max(0, $dbItem->stock - $qty);
-                    $dbItem->updateStatusBasedOnStock();
-                    $updatedItem = $dbItem;
-                }
+        if ($item) {
+            $table = $model->getTable();
+            $cols = Schema::getColumnListing($table);
+            $stockCol = in_array('stock', $cols) ? 'stock' : (in_array('quantity', $cols) ? 'quantity' : 'qty');
+
+            $currentStock = (int)($item->{$stockCol} ?? 0);
+            $newStock = max(0, $currentStock - $qty);
+            $minStock = $item->min_stock ?: 15;
+            $newStatus = $this->determineStatus($newStock, $minStock);
+
+            $updates = [$stockCol => $newStock];
+            if (in_array('status', $cols)) {
+                $updates['status'] = $newStatus;
             }
-        } catch (\Throwable $e) {}
 
-        $all = $this->getInventoryData()->map(function ($item) use ($id, $qty, &$updatedItem) {
-            if ($item->id == $id) {
-                $item->stock = max(0, $item->stock - $qty);
-                $item->status = $this->determineStatus($item->stock, $item->min_stock ?? 15);
-                $updatedItem = $item;
-            }
-            return $item;
-        });
-
-        $this->saveInventoryStorage($all);
-        session(['laundry_inventory_items' => $all->toArray()]);
+            $item->update($updates);
+        }
 
         if ($request->ajax() || $request->wantsJson()) {
             return response()->json([
                 'success' => true,
-                'message' => "Stock out of -{$qty} recorded!",
-                'item' => $updatedItem
+                'message' => "Stock out of -{$qty} recorded in database!",
+                'item' => $item
             ]);
         }
 
@@ -506,32 +390,24 @@ class InventoryController extends Controller
     }
 
     /**
-     * Delete Inventory Item.
+     * Delete Inventory Item directly from MySQL database.
      */
     public function destroy(Request $request, $id)
     {
-        $id = is_object($id) ? ($id->id ?? 1) : $id;
+        $id = is_object($id) ? ($id->id ?? $id->inventory_id ?? 1) : $id;
 
-        try {
-            if (Schema::hasTable('inventories')) {
-                $dbItem = Inventory::find($id);
-                if ($dbItem) {
-                    $dbItem->delete();
-                }
-            }
-        } catch (\Throwable $e) {}
+        $model = new Inventory();
+        $pk = $model->getKeyName();
+        $item = Inventory::where($pk, $id)->first() ?: Inventory::find($id);
 
-        $all = $this->getInventoryData()->reject(function ($item) use ($id) {
-            return $item->id == $id;
-        })->values();
-
-        $this->saveInventoryStorage($all);
-        session(['laundry_inventory_items' => $all->toArray()]);
+        if ($item) {
+            $item->delete();
+        }
 
         if ($request->ajax() || $request->wantsJson()) {
             return response()->json([
                 'success' => true,
-                'message' => 'Inventory item deleted successfully!'
+                'message' => 'Inventory item deleted successfully from database!'
             ]);
         }
 
@@ -539,17 +415,17 @@ class InventoryController extends Controller
     }
 
     /**
-     * Reset to default 6 items.
+     * Clear all items in MySQL database table.
      */
     public function reset(Request $request)
     {
-        $defaults = collect($this->getDefaultInventory())->map(function ($item) {
-            return (object)$item;
-        });
+        $model = new Inventory();
+        $table = $model->getTable();
 
-        $this->saveInventoryStorage($defaults);
-        session(['laundry_inventory_items' => $defaults->toArray()]);
+        if (Schema::hasTable($table)) {
+            DB::table($table)->truncate();
+        }
 
-        return redirect()->back()->with('success', 'Inventory reset to default 6 items.');
+        return redirect()->back()->with('success', 'Inventory table has been cleared.');
     }
 }

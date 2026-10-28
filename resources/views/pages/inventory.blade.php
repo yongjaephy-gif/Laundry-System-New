@@ -1,6 +1,6 @@
 @extends('layouts.navbar')
 
-@section('title', 'Inventory Management - Laundry 6 Plus')
+@section('title', 'Inventorys')
 
 @section('content')
 <div class="space-y-6 w-full mx-auto">
@@ -12,7 +12,11 @@
                 <i class="fa-solid fa-circle-check text-emerald-600 text-base"></i>
                 <span class="font-medium">{{ session('success') }}</span>
             </div>
-            <button onclick="this.parentElement.remove()" class="text-emerald-600 hover:text-emerald-800 font-bold text-lg leading-none cursor-pointer">&times;</button>
+            <script>
+            setTimeout(function() {
+                window.location.reload();
+            }, 200);
+        </script>
         </div>
     @endif
 
@@ -266,7 +270,7 @@
                                         data-notes="{{ $item->notes ?? '' }}"
                                         data-restocked="{{ $item->last_restocked ?? date('Y-m-d') }}"
                                         onclick="handleViewItemClick(this)"
-                                        class="w-8 h-8 rounded-lg bg-[#0EA5E9] hover:bg-sky-600 text-white flex items-center justify-center shadow-2xs transition active:scale-90 cursor-pointer" 
+                                        class="w-8 h-8 rounded-lg bg-[#2563EB] hover:bg-blue-700 text-white flex items-center justify-center shadow-2xs transition active:scale-90 cursor-pointer" 
                                         title="View Details">
                                     <i class="fa-solid fa-eye text-xs"></i>
                                 </button>

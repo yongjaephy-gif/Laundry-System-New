@@ -1,6 +1,6 @@
 @extends('layouts.navbar')
 
-@section('title', 'Pickup & Delivery Management - Laundry 6 Plus')
+@section('title', 'Pickup & Delivery')
 
 @section('content')
 <div class="space-y-6 w-full mx-auto pb-12 pt-4">
@@ -376,156 +376,94 @@
 
 </div>
 
-<!-- ================= SLIDE-OVER DRAWER: PICKUP & DELIVERY DETAILS ================= -->
-<!-- Matching the right-hand panel in the screenshot exactly -->
-<div id="drawerOverlay" class="hidden fixed inset-0 z-40 bg-black/40 backdrop-blur-xs transition-opacity duration-300" onclick="closeTaskDrawer()"></div>
-
-<div id="taskDrawer" class="fixed inset-y-0 right-0 z-50 w-full max-w-120 bg-white shadow-2xl flex flex-col transform translate-x-full transition-transform duration-300 ease-in-out border-l border-gray-200">
-    
-    <!-- Drawer Header -->
-    <div class="px-6 py-5 border-b border-gray-100 flex items-center justify-between">
-        <h3 class="text-xl font-bold text-gray-900 tracking-tight">Pickup & Delivery Details</h3>
-        <button type="button" onclick="closeTaskDrawer()" class="text-gray-400 hover:text-gray-600 p-1.5 rounded-lg transition cursor-pointer">
-            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"></path>
-            </svg>
-        </button>
-    </div>
-
-    <!-- Drawer Body Form -->
-    <form id="drawerDetailsForm" onsubmit="submitDrawerUpdate(event)" class="flex-1 overflow-y-auto p-6 space-y-6">
-        @csrf
-        <input type="hidden" id="drawerTaskId" name="id" value="">
-
-        <!-- 1. Order Information Box -->
-        <div>
-            <h4 class="text-xs font-bold text-gray-900 uppercase tracking-wider mb-3">Order Information</h4>
-            <div class="bg-gray-50/80 rounded-2xl p-4 border border-gray-100 grid grid-cols-2 gap-4 text-xs sm:text-sm">
-                <div>
-                    <span class="text-gray-400 block text-[11px]">Order No.</span>
-                    <strong id="drawerOrderNo" class="font-bold text-gray-900 text-sm block mt-0.5">ORD-0015</strong>
-                </div>
-                <div>
-                    <span class="text-gray-400 block text-[11px]">Customer</span>
-                    <strong id="drawerCustomerName" class="font-bold text-gray-900 text-sm block mt-0.5">Neang Pheaktra</strong>
-                </div>
-                <div>
-                    <span class="text-gray-400 block text-[11px]">Service Type</span>
-                    <strong id="drawerServiceType" class="font-bold text-gray-900 text-sm block mt-0.5">Wash & Fold</strong>
-                </div>
-                <div>
-                    <span class="text-gray-400 block text-[11px]">Total Amount</span>
-                    <strong id="drawerTotalAmount" class="font-bold text-gray-900 text-sm block mt-0.5">$14.00</strong>
-                </div>
-            </div>
+<!-- ================= MODAL: PICKUP & DELIVERY DETAILS ================= -->
+<div id="drawerOverlay" onclick="if(event.target === this) closeTaskDrawer()" class="hidden fixed inset-0 z-50 overflow-y-auto bg-gray-900/60 backdrop-blur-xs flex items-center justify-center p-4">
+    <div id="taskDrawer" class="bg-white rounded-3xl max-w-lg w-full p-6 shadow-2xl border border-gray-100 transform transition-all relative my-auto max-h-[92vh] flex flex-col">
+        
+        <!-- Header -->
+        <div class="flex items-center justify-between pb-3 border-b border-gray-100 shrink-0">
+            <h3 class="text-xl font-bold text-gray-900 tracking-tight">Pickup & Delivery Details</h3>
+            <button type="button" onclick="closeTaskDrawer()" class="text-gray-400 hover:text-gray-600 text-lg transition cursor-pointer">
+                ✕
+            </button>
         </div>
 
-        <!-- 2. Pickup Information (Requirement 1: Schedule Pickup) -->
-        <div>
-            <h4 class="text-xs font-bold text-gray-900 uppercase tracking-wider mb-2.5">Pickup Information</h4>
-            
-            <div class="grid grid-cols-2 gap-3 mb-3">
-                <!-- Pickup Date -->
-                <div>
-                    <label class="block text-[11px] font-medium text-gray-500 mb-1">Pickup Date</label>
-                    <div class="relative">
-                        <span class="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none text-gray-400">
-                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
-                        </span>
-                        <input type="date" 
-                               id="drawerPickupDate" 
-                               name="pickup_date" 
-                               value="2025-09-17" 
-                               class="w-full text-xs sm:text-sm bg-white border border-gray-200 rounded-xl pl-9 pr-3 py-2 text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500">
-                    </div>
-                </div>
+        <!-- Body Form -->
+        <form id="drawerDetailsForm" onsubmit="submitDrawerUpdate(event)" class="mt-3.5 space-y-3 overflow-y-auto pr-1 flex-1 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
+            @csrf
+            @method('PUT')
+            <input type="hidden" id="drawerTaskId" name="id" value="">
 
-                <!-- Pickup Time -->
-                <div>
-                    <label class="block text-[11px] font-medium text-gray-500 mb-1">Pickup Time</label>
-                    <div class="relative">
-                        <span class="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none text-gray-400">
-                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
-                        </span>
-                        <input type="text" 
-                               id="drawerPickupTime" 
-                               name="pickup_time" 
-                               value="08:00 AM" 
-                               placeholder="e.g. 08:00 AM" 
-                               class="w-full text-xs sm:text-sm bg-white border border-gray-200 rounded-xl pl-9 pr-3 py-2 text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500">
+            <!-- 1. Order Information Box (Compact 4-column summary) -->
+            <div class="bg-blue-50/50 rounded-2xl p-2.5 border border-blue-100/70 text-xs">
+                <div class="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                    <div>
+                        <span class="text-gray-500 block text-[10px] uppercase font-semibold">Order No.</span>
+                        <strong id="drawerOrderNo" class="font-bold text-gray-900 block mt-0.5">ORD-0015</strong>
+                    </div>
+                    <div>
+                        <span class="text-gray-500 block text-[10px] uppercase font-semibold">Customer</span>
+                        <strong id="drawerCustomerName" class="font-bold text-gray-900 block mt-0.5 truncate">Neang Pheaktra</strong>
+                    </div>
+                    <div>
+                        <span class="text-gray-500 block text-[10px] uppercase font-semibold">Service Type</span>
+                        <strong id="drawerServiceType" class="font-bold text-gray-900 block mt-0.5">Wash & Fold</strong>
+                    </div>
+                    <div>
+                        <span class="text-gray-500 block text-[10px] uppercase font-semibold">Total Amount</span>
+                        <strong id="drawerTotalAmount" class="font-bold text-blue-600 block mt-0.5">$14.00</strong>
                     </div>
                 </div>
             </div>
 
-            <!-- Pickup Address -->
+            <!-- 2. Pickup & 3. Delivery Schedule (Side by Side 2 Columns) -->
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                <!-- Pickup Box -->
+                <div class="p-2.5 bg-blue-50/40 rounded-2xl border border-blue-100/70 space-y-1.5">
+                    <span class="text-[11px] font-bold text-blue-700 uppercase tracking-wide block">1. Pickup Details</span>
+                    <div class="grid grid-cols-2 gap-1.5">
+                        <div>
+                            <label class="block text-[10px] font-semibold text-gray-600 mb-0.5">Date</label>
+                            <input type="date" id="drawerPickupDate" name="pickup_date" value="2025-09-17" class="w-full px-2 py-1.5 bg-white border border-gray-200 rounded-lg text-xs focus:ring-2 focus:ring-blue-500">
+                        </div>
+                        <div>
+                            <label class="block text-[10px] font-semibold text-gray-600 mb-0.5">Time</label>
+                            <input type="text" id="drawerPickupTime" name="pickup_time" value="08:00 AM" placeholder="08:00 AM" class="w-full px-2 py-1.5 bg-white border border-gray-200 rounded-lg text-xs focus:ring-2 focus:ring-blue-500">
+                        </div>
+                    </div>
+                    <div>
+                        <label class="block text-[10px] font-semibold text-gray-600 mb-0.5">Pickup Address</label>
+                        <input type="text" id="drawerPickupAddress" name="pickup_address" value="#12, Street 63, Siem Reap" placeholder="Enter address" class="w-full px-2.5 py-1.5 bg-white border border-gray-200 rounded-lg text-xs focus:ring-2 focus:ring-blue-500">
+                    </div>
+                </div>
+
+                <!-- Delivery Box -->
+                <div class="p-2.5 bg-emerald-50/40 rounded-2xl border border-emerald-100/70 space-y-1.5">
+                    <span class="text-[11px] font-bold text-emerald-700 uppercase tracking-wide block">2. Delivery Details</span>
+                    <div class="grid grid-cols-2 gap-1.5">
+                        <div>
+                            <label class="block text-[10px] font-semibold text-gray-600 mb-0.5">Date</label>
+                            <input type="date" id="drawerDeliveryDate" name="delivery_date" value="2025-09-18" class="w-full px-2 py-1.5 bg-white border border-gray-200 rounded-lg text-xs focus:ring-2 focus:ring-blue-500">
+                        </div>
+                        <div>
+                            <label class="block text-[10px] font-semibold text-gray-600 mb-0.5">Time</label>
+                            <input type="text" id="drawerDeliveryTime" name="delivery_time" value="12:00 PM" placeholder="12:00 PM" class="w-full px-2 py-1.5 bg-white border border-gray-200 rounded-lg text-xs focus:ring-2 focus:ring-blue-500">
+                        </div>
+                    </div>
+                    <div>
+                        <label class="block text-[10px] font-semibold text-gray-600 mb-0.5">Delivery Address</label>
+                        <input type="text" id="drawerDeliveryAddress" name="delivery_address" value="#45, Pokambor Ave, Siem Reap" placeholder="Enter address" class="w-full px-2.5 py-1.5 bg-white border border-gray-200 rounded-lg text-xs focus:ring-2 focus:ring-blue-500">
+                    </div>
+                </div>
+            </div>
+
+            <!-- 4. Delivery Staff -->
             <div>
-                <label class="block text-[11px] font-medium text-gray-500 mb-1">Pickup Address</label>
-                <input type="text" 
-                       id="drawerPickupAddress" 
-                       name="pickup_address" 
-                       value="#12, Street 63, Siem Reap" 
-                       placeholder="Enter street, commune, city" 
-                       class="w-full text-xs sm:text-sm bg-white border border-gray-200 rounded-xl px-3.5 py-2 text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500">
-            </div>
-        </div>
-
-        <!-- 3. Delivery Information (Requirement 2: Schedule Delivery) -->
-        <div>
-            <h4 class="text-xs font-bold text-gray-900 uppercase tracking-wider mb-2.5">Delivery Information</h4>
-            
-            <div class="grid grid-cols-2 gap-3 mb-3">
-                <!-- Delivery Date -->
-                <div>
-                    <label class="block text-[11px] font-medium text-gray-500 mb-1">Delivery Date</label>
-                    <div class="relative">
-                        <span class="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none text-gray-400">
-                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
-                        </span>
-                        <input type="date" 
-                               id="drawerDeliveryDate" 
-                               name="delivery_date" 
-                               value="2025-09-18" 
-                               class="w-full text-xs sm:text-sm bg-white border border-gray-200 rounded-xl pl-9 pr-3 py-2 text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500">
-                    </div>
-                </div>
-
-                <!-- Delivery Time -->
-                <div>
-                    <label class="block text-[11px] font-medium text-gray-500 mb-1">Delivery Time</label>
-                    <div class="relative">
-                        <span class="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none text-gray-400">
-                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
-                        </span>
-                        <input type="text" 
-                               id="drawerDeliveryTime" 
-                               name="delivery_time" 
-                               value="12:00 PM" 
-                               placeholder="e.g. 12:00 PM" 
-                               class="w-full text-xs sm:text-sm bg-white border border-gray-200 rounded-xl pl-9 pr-3 py-2 text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500">
-                    </div>
-                </div>
-            </div>
-
-            <!-- Delivery Address -->
-            <div>
-                <label class="block text-[11px] font-medium text-gray-500 mb-1">Delivery Address</label>
-                <input type="text" 
-                       id="drawerDeliveryAddress" 
-                       name="delivery_address" 
-                       value="#45, Pokambor Ave, Siem Reap" 
-                       placeholder="Enter street, commune, city" 
-                       class="w-full text-xs sm:text-sm bg-white border border-gray-200 rounded-xl px-3.5 py-2 text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500">
-            </div>
-        </div>
-
-        <!-- 4. Delivery Staff (Requirement 3: Assign Delivery Staff) -->
-        <div>
-            <h4 class="text-xs font-bold text-gray-900 uppercase tracking-wider mb-2">Delivery Staff</h4>
-            <div class="relative">
+                <label class="block text-xs font-semibold text-gray-700 mb-1">Assign Delivery Staff</label>
                 <select id="drawerDeliveryStaff" 
                         name="delivery_staff_id" 
                         onchange="syncStaffName(this)"
-                        class="w-full text-xs sm:text-sm bg-white border border-gray-200 rounded-xl px-3.5 py-2.5 text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 appearance-none cursor-pointer">
+                        class="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-xl text-xs focus:ring-2 focus:ring-blue-500 cursor-pointer">
                     <option value="">Unassigned</option>
                     @foreach($staffList as $staff)
                     <option value="{{ $staff['id'] }}" data-name="{{ $staff['name'] }}" {{ $staff['name'] === 'Sok Chanthy' ? 'selected' : '' }}>
@@ -533,90 +471,86 @@
                     </option>
                     @endforeach
                 </select>
-                <span class="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none text-gray-400">
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
-                </span>
+                <input type="hidden" id="drawerDeliveryStaffName" name="delivery_staff_name" value="Sok Chanthy">
             </div>
-            <input type="hidden" id="drawerDeliveryStaffName" name="delivery_staff_name" value="Sok Chanthy">
-        </div>
 
-        <!-- 5. Status Stepper (Requirement 4: Track Pickup & Delivery Status) -->
-        <div>
-            <h4 class="text-xs font-bold text-gray-900 uppercase tracking-wider mb-3">Status</h4>
-            <input type="hidden" id="drawerStatusInput" name="status" value="Scheduled">
-            
-            <!-- Horizontal Progress Stepper Matching Screenshot -->
-            <div class="relative flex items-center justify-between px-3 pt-2">
-                <!-- Connecting Line -->
-                <div class="absolute top-4 left-6 right-6 h-0.5 bg-gray-200 z-0">
-                    <div id="stepperProgressLine" class="h-full bg-[#2563EB] transition-all duration-300" style="width: 0%;"></div>
-                </div>
+            <!-- 5. Status Stepper -->
+            <div>
+                <label class="block text-xs font-semibold text-gray-700 mb-1.5">Status Tracking</label>
+                <input type="hidden" id="drawerStatusInput" name="status" value="Scheduled">
+                
+                <!-- Horizontal Progress Stepper -->
+                <div class="relative flex items-center justify-between px-3 pt-1 pb-1">
+                    <div class="absolute top-3.5 left-6 right-6 h-0.5 bg-gray-200 z-0">
+                        <div id="stepperProgressLine" class="h-full bg-[#2563EB] transition-all duration-300" style="width: 0%;"></div>
+                    </div>
 
-                <!-- Step 1: Scheduled -->
-                <div class="relative z-10 flex flex-col items-center cursor-pointer group" onclick="setStepperStatus('Scheduled')">
-                    <div id="stepDot-Scheduled" class="w-4 h-4 rounded-full border-2 border-[#2563EB] bg-[#2563EB] ring-4 ring-blue-100 transition-all"></div>
-                    <span id="stepLabel-Scheduled" class="text-[11px] font-bold text-[#2563EB] mt-2">Scheduled</span>
-                </div>
+                    <!-- Step 1: Scheduled -->
+                    <div class="relative z-10 flex flex-col items-center cursor-pointer group" onclick="setStepperStatus('Scheduled')">
+                        <div id="stepDot-Scheduled" class="w-3.5 h-3.5 rounded-full border-2 border-[#2563EB] bg-[#2563EB] ring-4 ring-blue-100 transition-all"></div>
+                        <span id="stepLabel-Scheduled" class="text-[10px] font-bold text-[#2563EB] mt-1.5">Scheduled</span>
+                    </div>
 
-                <!-- Step 2: Picked Up -->
-                <div class="relative z-10 flex flex-col items-center cursor-pointer group" onclick="setStepperStatus('Picked Up')">
-                    <div id="stepDot-PickedUp" class="w-4 h-4 rounded-full border-2 border-gray-300 bg-white group-hover:border-blue-400 transition-all"></div>
-                    <span id="stepLabel-PickedUp" class="text-[11px] font-medium text-gray-500 mt-2">Picked Up</span>
-                </div>
+                    <!-- Step 2: Picked Up -->
+                    <div class="relative z-10 flex flex-col items-center cursor-pointer group" onclick="setStepperStatus('Picked Up')">
+                        <div id="stepDot-PickedUp" class="w-3.5 h-3.5 rounded-full border-2 border-gray-300 bg-white group-hover:border-blue-400 transition-all"></div>
+                        <span id="stepLabel-PickedUp" class="text-[10px] font-medium text-gray-500 mt-1.5">Picked Up</span>
+                    </div>
 
-                <!-- Step 3: In Transit -->
-                <div class="relative z-10 flex flex-col items-center cursor-pointer group" onclick="setStepperStatus('In Transit')">
-                    <div id="stepDot-InTransit" class="w-4 h-4 rounded-full border-2 border-gray-300 bg-white group-hover:border-blue-400 transition-all"></div>
-                    <span id="stepLabel-InTransit" class="text-[11px] font-medium text-gray-500 mt-2">In Transit</span>
-                </div>
+                    <!-- Step 3: In Transit -->
+                    <div class="relative z-10 flex flex-col items-center cursor-pointer group" onclick="setStepperStatus('In Transit')">
+                        <div id="stepDot-InTransit" class="w-3.5 h-3.5 rounded-full border-2 border-gray-300 bg-white group-hover:border-blue-400 transition-all"></div>
+                        <span id="stepLabel-InTransit" class="text-[10px] font-medium text-gray-500 mt-1.5">In Transit</span>
+                    </div>
 
-                <!-- Step 4: Delivered -->
-                <div class="relative z-10 flex flex-col items-center cursor-pointer group" onclick="setStepperStatus('Delivered')">
-                    <div id="stepDot-Delivered" class="w-4 h-4 rounded-full border-2 border-gray-300 bg-white group-hover:border-blue-400 transition-all"></div>
-                    <span id="stepLabel-Delivered" class="text-[11px] font-medium text-gray-500 mt-2">Delivered</span>
+                    <!-- Step 4: Delivered -->
+                    <div class="relative z-10 flex flex-col items-center cursor-pointer group" onclick="setStepperStatus('Delivered')">
+                        <div id="stepDot-Delivered" class="w-3.5 h-3.5 rounded-full border-2 border-gray-300 bg-white group-hover:border-blue-400 transition-all"></div>
+                        <span id="stepLabel-Delivered" class="text-[10px] font-medium text-gray-500 mt-1.5">Delivered</span>
+                    </div>
                 </div>
             </div>
-        </div>
 
-        <!-- 6. Notes (Optional) -->
-        <div>
-            <div class="flex items-center justify-between mb-1.5">
-                <h4 class="text-xs font-bold text-gray-900 uppercase tracking-wider">Notes</h4>
-                <span id="drawerNotesCount" class="text-[10px] text-gray-400 font-mono">0/500</span>
+            <!-- 6. Notes (Optional) -->
+            <div>
+                <div class="flex items-center justify-between mb-1">
+                    <label class="text-xs font-semibold text-gray-700">Notes <span class="text-gray-400 font-normal text-[11px]">(Optional)</span></label>
+                    <span id="drawerNotesCount" class="text-[10px] text-gray-400 font-mono">0/500</span>
+                </div>
+                <textarea id="drawerNotes" 
+                          name="notes" 
+                          rows="1.5" 
+                          maxlength="500"
+                          oninput="updateCharCount(this)"
+                          placeholder="Add notes..." 
+                          class="w-full px-3 py-1.5 bg-gray-50 border border-gray-200 rounded-xl text-xs placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition resize-none"></textarea>
             </div>
-            <textarea id="drawerNotes" 
-                      name="notes" 
-                      rows="3" 
-                      maxlength="500"
-                      oninput="updateCharCount(this)"
-                      placeholder="Add notes (optional)..." 
-                      class="w-full text-xs sm:text-sm bg-white border border-gray-200 rounded-xl p-3 text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"></textarea>
-        </div>
 
-        <!-- Drawer Footer Buttons -->
-        <div class="flex items-center justify-end space-x-3 pt-4 border-t border-gray-100">
-            <button type="button" 
-                    onclick="closeTaskDrawer()" 
-                    class="px-5 py-2.5 text-xs sm:text-sm font-semibold text-gray-700 bg-white hover:bg-gray-50 border border-gray-200 rounded-xl transition cursor-pointer">
-                Cancel
-            </button>
-            <button type="submit" 
-                    class="px-6 py-2.5 text-xs sm:text-sm font-semibold text-white bg-[#2563EB] hover:bg-blue-700 rounded-xl transition shadow-sm flex items-center space-x-2 cursor-pointer">
-                <svg class="w-4 h-4 stroke-current" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z"></path>
-                    <polyline points="17 21 17 13 7 13 7 21"></polyline>
-                    <polyline points="7 3 7 8 15 8"></polyline>
-                </svg>
-                <span>Update</span>
-            </button>
-        </div>
-    </form>
+            <!-- Footer Buttons -->
+            <div class="pt-3 border-t border-gray-100 flex items-center justify-end space-x-2 shrink-0">
+                <button type="button" 
+                        onclick="closeTaskDrawer()" 
+                        class="px-4 py-2 text-xs font-semibold text-gray-600 bg-gray-100 hover:bg-gray-200 rounded-xl transition cursor-pointer">
+                    Cancel
+                </button>
+                <button type="submit" 
+                        class="px-5 py-2 bg-[#2563EB] hover:bg-blue-700 text-white text-xs font-bold rounded-xl shadow-sm transition flex items-center space-x-1.5 cursor-pointer">
+                    <svg class="w-3.5 h-3.5 stroke-current" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z"></path>
+                        <polyline points="17 21 17 13 7 13 7 21"></polyline>
+                        <polyline points="7 3 7 8 15 8"></polyline>
+                    </svg>
+                    <span>Update Task</span>
+                </button>
+            </div>
+        </form>
+    </div>
 </div>
 
 <!-- ================= CREATE PICKUP / DELIVERY MODAL ================= -->
-<div id="createModal" class="hidden fixed inset-0 z-50 overflow-y-auto bg-black/50 flex items-center justify-center p-4">
-    <div class="bg-white rounded-2xl max-w-xl w-full p-6 shadow-2xl relative animate-in fade-in zoom-in duration-200">
-        <div class="flex items-center justify-between pb-4 border-b border-gray-100">
+<div id="createModal" class="hidden fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
+    <div class="bg-white rounded-3xl max-w-lg w-full p-4 sm:p-4 shadow-2xl animate-fade-in border border-gray-100 my-auto max-h-250 flex flex-col">
+        <div class="flex items-center justify-between pb-2 border-b border-gray-100">
             <div>
                 <h3 class="text-xl font-bold text-gray-900">Schedule Pickup & Delivery</h3>
                 <p class="text-xs text-gray-500 mt-0.5">Enter details to schedule laundry pickup and delivery logistics.</p>
@@ -626,7 +560,7 @@
             </button>
         </div>
 
-        <form id="createTaskForm" onsubmit="submitCreateTask(event)" class="mt-4 space-y-4">
+        <form id="createTaskForm" onsubmit="submitCreateTask(event)" class="mt-1 space-y-2">
             @csrf
 
             <!-- Customer & Service -->
@@ -895,9 +829,8 @@
         notesEl.value = task.notes || '';
         updateCharCount(notesEl);
 
-        // Open Drawer
+        // Open Modal
         document.getElementById('drawerOverlay').classList.remove('hidden');
-        document.getElementById('taskDrawer').classList.remove('translate-x-full');
     }
 
     function editTask(task) {
@@ -905,10 +838,7 @@
     }
 
     function closeTaskDrawer() {
-        document.getElementById('taskDrawer').classList.add('translate-x-full');
-        setTimeout(() => {
-            document.getElementById('drawerOverlay').classList.add('hidden');
-        }, 200);
+        document.getElementById('drawerOverlay').classList.add('hidden');
     }
 
     // Status Stepper Controller (Requirement 4: Track Status)
@@ -955,13 +885,17 @@
         document.getElementById('drawerNotesCount').innerText = len + '/500';
     }
 
-    // Submit Drawer Update (Handles Schedule Pickup, Schedule Delivery, Assign Staff, Track Status)
+    // Submit Modal Update (Handles Schedule Pickup, Schedule Delivery, Assign Staff, Track Status)
     async function submitDrawerUpdate(e) {
         e.preventDefault();
         const taskId = document.getElementById('drawerTaskId').value;
         if (!taskId) return;
 
-        const formData = new FormData(document.getElementById('drawerDetailsForm'));
+        const form = document.getElementById('drawerDetailsForm');
+        const formData = new FormData(form);
+        if (!formData.has('_method')) {
+            formData.append('_method', 'PUT');
+        }
 
         try {
             const res = await fetch(`/pickup-and-delivery/${taskId}`, {

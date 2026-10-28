@@ -7,7 +7,8 @@
     <title>@yield('title', 'Dashboard')</title>
 
     <!-- Icon លើ Browser Tab -->
-    <link rel="icon" type="image/png" href="{{ asset('images/logo.png') }}">
+    <link rel="icon" type="image/png" href="{{ asset('images/logo.png') }}?v=2">
+    <link rel="shortcut icon" type="image/png" href="{{ asset('images/logo.png') }}?v=2">
 
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
@@ -48,11 +49,11 @@
 
     <!-- Left Sidebar -->
     <aside id="app-sidebar"
-        class=" w-50 bg-blue-900 text-white flex flex-col rounded-r-3xl scrollbar-none h-screen shrink-0 transition-all duration-300">
+        class="w-56 bg-blue-900 text-white flex flex-col rounded-r-3xl scrollbar-none h-screen shrink-0 transition-all duration-300">
         <!-- <div id="sidebar-backdrop" onclick="toggleSidebar()" class="fixed inset-0  z-40 hidden md:hidden"></div> -->
         <div class="p-3 text-xl font-bold border-b border-blue-800 items-center flex flex-col justify-center">
             <img src="{{asset('images/logo.PNG')}}" alt="Logo" class="w-14 h-14 rounded-full object-cover">
-            <div class="text-center mt-1">Laundry 6 Plus</div>
+            <div class="text-center mt-1">Laundry SIX Plus</div>
         </div>
 
         <nav class="flex-1 p-3 space-y-1 overflow-y-auto whitespace-nowrap scrollbar-none">
@@ -133,7 +134,7 @@
             <a href="{{ route('promotions.index') }}"
                 class="flex items-center space-x-3 p-3 rounded-3xl hover:bg-blue-600 whitespace-nowrap {{ request()->is('*discount*') ? 'bg-blue-600 text-white font-semibold' : 'text-gray-300' }} transition">
                 <i data-lucide="badge-percent" class="w-5 h-5 shrink-0"></i>
-                <span class="whitespace-nowrap">Discount & Promotion</span>
+                <span class="whitespace-nowrap">Discount-Promotion</span>
             </a>
             @endif
 
@@ -145,7 +146,7 @@
             </a>
             @endif
 
-            @if(in_array(Auth::user()->getCurrentRole(), ['admin']))
+            @if(in_array(Auth::user()->getCurrentRole(), ['admin','staff', 'delivery', 'receptionist']))
             <a href="{{ route('reports.index') }}"
                 class="flex items-center space-x-3 p-3 rounded-3xl hover:bg-blue-600 whitespace-nowrap {{ request()->is('*report*') ? 'bg-blue-600 text-white font-semibold' : 'text-gray-300' }} transition">
                 <i data-lucide="file-text" class="w-5 h-5 shrink-0"></i>
@@ -264,9 +265,12 @@
                 'Delivery' => asset('images/roles/delivery.png'),
                 'Receptionist' => asset('images/roles/receptionist.png'),
                 ];
-                $currentRole = session('active_role', 'Admin');
-                $avatarImg = $roleAvatars[$currentRole] ?? asset('images/default-avatar.png');
+                $currentRole = session('active_role', Auth::check() ? ucfirst(Auth::user()->getCurrentRole()) : 'Admin');
+                $authUser = Auth::user();
+                $userAvatar = $authUser ? $authUser->profile_image_url : null;
+                $avatarImg = !empty($userAvatar) ? $userAvatar : ($roleAvatars[$currentRole] ?? asset('images/default-avatar.png'));
                 @endphp
+
 
                 <!-- User Role Switcher Dropdown Trigger -->
                 <div class="relative" id="navbar-role-switcher-container">

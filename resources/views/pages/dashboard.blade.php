@@ -8,53 +8,58 @@
 
     <!-- Flash Notifications -->
     @if(session('success'))
-        <div class="p-4 rounded-2xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-sm flex items-center justify-between shadow-sm animate-fade-in">
-            <div class="flex items-center space-x-3">
-                <i class="fa-solid fa-circle-check text-emerald-600 text-base"></i>
-                <span class="font-medium">{{ session('success') }}</span>
-            </div>
-            <button onclick="this.parentElement.remove()" class="text-emerald-600 hover:text-emerald-800 text-base leading-none">&times;</button>
+    <div class="p-4 rounded-2xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-sm flex items-center justify-between shadow-sm animate-fade-in">
+        <div class="flex items-center space-x-3">
+            <i class="fa-solid fa-circle-check text-emerald-600 text-base"></i>
+            <span class="font-medium">{{ session('success') }}</span>
         </div>
+        <script>
+            setTimeout(function() {
+                window.location.reload();
+            }, 200);
+        </script>
+        
+    </div>
     @endif
     @if(session('error'))
-        <div class="p-4 rounded-2xl bg-rose-50 border border-rose-200 text-rose-800 text-sm flex items-center justify-between shadow-sm animate-fade-in">
-            <div class="flex items-center space-x-3">
-                <i class="fa-solid fa-circle-exclamation text-rose-600 text-base"></i>
-                <span class="font-medium">{{ session('error') }}</span>
-            </div>
-            <button onclick="this.parentElement.remove()" class="text-rose-600 hover:text-rose-800 text-base leading-none">&times;</button>
+    <div class="p-4 rounded-2xl bg-rose-50 border border-rose-200 text-rose-800 text-sm flex items-center justify-between shadow-sm animate-fade-in">
+        <div class="flex items-center space-x-3">
+            <i class="fa-solid fa-circle-exclamation text-rose-600 text-base"></i>
+            <span class="font-medium">{{ session('error') }}</span>
         </div>
+        <button onclick="this.parentElement.remove()" class="text-rose-600 hover:text-rose-800 text-base leading-none">&times;</button>
+    </div>
     @endif
 
     <!-- 8 STAT CARDS GRID (4x2 layout exactly matching design) -->
     <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-5">
         @foreach($statCards as $card)
-            <div class="{{ $card['card_bg'] }} rounded-2xl p-5 sm:p-6 shadow-sm hover:shadow-md transition-all duration-200 hover:-translate-y-0.5 border border-white/70 flex flex-col justify-between min-h-28">
-                <!-- Top Row: Icon Box + (Label & Big Bold Value) -->
-                <div class="flex items-center space-x-3.5">
-                    <!-- 54px rounded icon box in solid color -->
-                    <div class="{{ $card['icon_box_bg'] }} w-14 h-14 rounded-2xl flex items-center justify-center shrink-0 shadow-sm text-white">
-                        <i class="{{ $card['icon_fa'] }} text-2xl"></i>
-                    </div>
-                    <!-- Label and Metric Value -->
-                    <div class="flex-1 min-w-0">
-                        <div class="text-xs sm:text-sm text-gray-500 font-medium truncate leading-none">{{ $card['label'] }}</div>
-                        <div class="text-xl sm:text-xl font-bold text-gray-900 leading-tight tracking-tight mt-1.5">{{ $card['value'] }}</div>
-                    </div>
+        <div class="{{ $card['card_bg'] }} rounded-2xl p-5 sm:p-6 shadow-sm hover:shadow-md transition-all duration-200 hover:-translate-y-0.5 border border-white/70 flex flex-col justify-between min-h-28">
+            <!-- Top Row: Icon Box + (Label & Big Bold Value) -->
+            <div class="flex items-center space-x-3.5">
+                <!-- 54px rounded icon box in solid color -->
+                <div class="{{ $card['icon_box_bg'] }} w-14 h-14 rounded-2xl flex items-center justify-center shrink-0 shadow-sm text-white">
+                    <i class="{{ $card['icon_fa'] }} text-2xl"></i>
                 </div>
-
-                <!-- Bottom Row: Trend Line with green arrow and comparison text -->
-                <div class="mt-3.5 flex items-center text-xs font-semibold text-[#10B981] leading-none">
-                    <span class="inline-flex items-center">↑ {{ $card['trend_pct'] }}</span>
-                    <span class="text-gray-400 font-normal ml-1.5">{{ $card['trend_text'] }}</span>
+                <!-- Label and Metric Value -->
+                <div class="flex-1 min-w-0">
+                    <div class="text-xs sm:text-sm text-gray-500 font-medium truncate leading-none">{{ $card['label'] }}</div>
+                    <div class="text-xl sm:text-xl font-bold text-gray-900 leading-tight tracking-tight mt-1.5">{{ $card['value'] }}</div>
                 </div>
             </div>
+
+            <!-- Bottom Row: Trend Line with green arrow and comparison text -->
+            <div class="mt-3.5 flex items-center text-xs font-semibold text-[#10B981] leading-none">
+                <span class="inline-flex items-center">↑ {{ $card['trend_pct'] }}</span>
+                <span class="text-gray-400 font-normal ml-1.5">{{ $card['trend_text'] }}</span>
+            </div>
+        </div>
         @endforeach
     </div>
 
     <!-- CHARTS SECTION: Order Status Donut Chart & Revenue Overview Grouped Bar Chart -->
     <div class="grid grid-cols-1 lg:grid-cols-12 gap-5">
-        
+
         <!-- Left: Order Status Chart Card (lg:col-span-5) -->
         <div class="lg:col-span-5 bg-white rounded-3xl p-6 shadow-sm border border-gray-100 flex flex-col justify-between">
             <!-- Header: Title & Dropdown -->
@@ -94,16 +99,16 @@
                 <!-- Vertical Legend Stack with Count and Dynamic Percentage -->
                 <div id="orderStatusLegend" class="w-full sm:w-auto flex-1 max-w-xs space-y-3.5">
                     @foreach($orderStatus['categories'] as $cat)
-                        <div class="flex items-center justify-between text-xs">
-                            <div class="flex items-center space-x-2.5">
-                                <span class="w-2.5 h-2.5 rounded-full shrink-0" {!! 'style="background-color: ' . e($cat['color']) . ';"' !!}></span>
-                                <span class="text-gray-600 font-medium">{{ $cat['name'] }}</span>
-                            </div>
-                            <div class="flex items-center space-x-4">
-                                <span class="font-bold text-gray-900 w-6 text-right">{{ $cat['count'] }}</span>
-                                <span class="text-gray-400 w-8 text-right font-medium">{{ $cat['percentage'] }}%</span>
-                            </div>
+                    <div class="flex items-center justify-between text-xs">
+                        <div class="flex items-center space-x-2.5">
+                            <span class="w-2.5 h-2.5 rounded-full shrink-0" {!! 'style="background-color: ' . e($cat['color']) . ';"' !!}></span>
+                            <span class="text-gray-600 font-medium">{{ $cat['name'] }}</span>
                         </div>
+                        <div class="flex items-center space-x-4">
+                            <span class="font-bold text-gray-900 w-6 text-right">{{ $cat['count'] }}</span>
+                            <span class="text-gray-400 w-8 text-right font-medium">{{ $cat['percentage'] }}%</span>
+                        </div>
+                    </div>
                     @endforeach
                 </div>
             </div>
@@ -154,8 +159,12 @@
 @endsection
 
 @push('scripts')
-<script id="order-status-data" type="application/json">@json($orderStatus)</script>
-<script id="revenue-overview-data" type="application/json">@json($revenueOverview)</script>
+<script id="order-status-data" type="application/json">
+    @json($orderStatus)
+</script>
+<script id="revenue-overview-data" type="application/json">
+    @json($revenueOverview)
+</script>
 <script>
     // ==========================================
     // 1. DATA FROM BACKEND (Passed cleanly from Controller)
@@ -201,8 +210,15 @@
                     },
                     tooltip: {
                         backgroundColor: '#1E293B',
-                        titleFont: { family: "'Plus Jakarta Sans', sans-serif", size: 12, weight: 'bold' },
-                        bodyFont: { family: "'Plus Jakarta Sans', sans-serif", size: 11 },
+                        titleFont: {
+                            family: "'Plus Jakarta Sans', sans-serif",
+                            size: 12,
+                            weight: 'bold'
+                        },
+                        bodyFont: {
+                            family: "'Plus Jakarta Sans', sans-serif",
+                            size: 11
+                        },
                         padding: 10,
                         cornerRadius: 8,
                         callbacks: {
@@ -303,7 +319,7 @@
         if (!ctx) return;
 
         const periodData = revenueOverviewRaw[periodKey] || revenueOverviewRaw['daily'];
-        
+
         // Multi-line labels matching design: Top line day/label, bottom line date
         const multiLineLabels = periodData.labels.map((lbl, idx) => {
             const dateStr = periodData.dates && periodData.dates[idx] ? periodData.dates[idx] : '';
@@ -323,8 +339,7 @@
             type: 'bar',
             data: {
                 labels: multiLineLabels,
-                datasets: [
-                    {
+                datasets: [{
                         label: "Today's Revenue",
                         data: periodData.today_series,
                         backgroundColor: '#2563EB', // Strong Royal Blue
@@ -353,8 +368,15 @@
                     },
                     tooltip: {
                         backgroundColor: '#1E293B',
-                        titleFont: { family: "'Plus Jakarta Sans', sans-serif", size: 12, weight: 'bold' },
-                        bodyFont: { family: "'Plus Jakarta Sans', sans-serif", size: 11 },
+                        titleFont: {
+                            family: "'Plus Jakarta Sans', sans-serif",
+                            size: 12,
+                            weight: 'bold'
+                        },
+                        bodyFont: {
+                            family: "'Plus Jakarta Sans', sans-serif",
+                            size: 11
+                        },
                         padding: 10,
                         cornerRadius: 8,
                         callbacks: {

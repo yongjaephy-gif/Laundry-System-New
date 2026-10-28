@@ -4,6 +4,8 @@ namespace App\Http\Controllers;
 
 use App\Models\PickupDelivery;
 use App\Models\Employee;
+use App\Models\Order;
+use App\Models\Customer;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
@@ -25,12 +27,12 @@ class PickupAndDeliveryController extends Controller
                           ->orWhere('role', 'LIKE', '%driver%');
                     })
                     ->orderBy('name', 'asc')
-                    ->get(['id', 'name', 'role', 'phone']);
+                    ->get();
 
                 if ($emps->count() === 0) {
                     $emps = Employee::where('status', 'Active')
                         ->orderBy('name', 'asc')
-                        ->get(['id', 'name', 'role', 'phone']);
+                        ->get();
                 }
 
                 return $emps->map(function ($emp) {
@@ -50,6 +52,96 @@ class PickupAndDeliveryController extends Controller
     }
 
     /**
+     * Synchronize orders table with pickup_deliveries table.
+     */
+    private function syncWithOrders(): void
+    {
+        try {
+            if (!Schema::hasTable('orders') || !Schema::hasTable('pickup_deliveries')) {
+                return;
+            }
+
+            $allOrders = Order::all();
+            $maxOrderNum = 0;
+            foreach ($allOrders as $o) {
+                if (preg_match('/^ORD-(\d+)$/i', $o->order_number, $m)) {
+                    $maxOrderNum = max($maxOrderNum, (int)$m[1]);
+                }
+            }
+
+            $allPickups = PickupDelivery::all();
+            foreach ($allPickups as $p) {
+                if (preg_match('/^ORD-(\d+)$/i', $p->order_number, $m)) {
+                    $maxOrderNum = max($maxOrderNum, (int)$m[1]);
+                }
+            }
+
+            // 1. Resolve collision: if a pickup_delivery has same order_number as an Order but different customer
+            foreach ($allOrders as $o) {
+                $collision = PickupDelivery::where('order_number', $o->order_number)
+                    ->where('customer_name', '!=', $o->customer_name)
+                    ->first();
+                if ($collision) {
+                    $maxOrderNum++;
+                    $newOrderNo = sprintf('ORD-%04d', $maxOrderNum);
+                    $collision->order_number = $newOrderNo;
+                    $collision->save();
+
+                    // Create matching Order for this renumbered task
+                    Order::create([
+                        'order_number' => $newOrderNo,
+                        'customer_name' => $collision->customer_name,
+                        'customer_phone' => $collision->customer_phone,
+                        'service_type' => $collision->service_type,
+                        'total_price' => $collision->total_amount ?? 15.00,
+                        'order_date' => now(),
+                        'pickup_date' => $collision->pickup_date,
+                        'delivery_date' => $collision->delivery_date,
+                        'customer_address' => $collision->delivery_address ?: $collision->pickup_address,
+                        'status' => match($collision->status) {
+                            'In Transit' => 'Out for Delivery',
+                            'Delivered' => 'Completed',
+                            default => 'Received',
+                        },
+                        'notes' => $collision->notes,
+                    ]);
+                }
+            }
+
+            // 2. Sync all orders from `orders` into `pickup_deliveries`
+            foreach ($allOrders as $order) {
+                $pickupTask = PickupDelivery::where('order_number', $order->order_number)->first();
+                $pickupStatus = match(strtolower(trim($order->status))) {
+                    'out for delivery' => 'In Transit',
+                    'completed' => 'Delivered',
+                    'ready for pickup' => 'Picked Up',
+                    default => 'Scheduled',
+                };
+
+                if (!$pickupTask) {
+                    PickupDelivery::create([
+                        'order_number' => $order->order_number,
+                        'customer_name' => $order->customer_name,
+                        'customer_phone' => $order->customer_phone,
+                        'service_type' => $order->service_type,
+                        'total_amount' => $order->total_price ?? 0.00,
+                        'pickup_date' => $order->pickup_date,
+                        'pickup_time' => '09:00 AM',
+                        'pickup_address' => $order->customer_address ?: 'Main Store',
+                        'delivery_date' => $order->delivery_date,
+                        'delivery_time' => '02:00 PM',
+                        'delivery_address' => $order->customer_address ?: 'Customer Address',
+                        'status' => $pickupStatus,
+                        'notes' => $order->notes,
+                    ]);
+                }
+            }
+        } catch (\Throwable $e) {
+            Log::warning('syncWithOrders warning: ' . $e->getMessage());
+        }
+    }
+
+    /**
      * Display the Pickup & Delivery Management page.
      * Fulfills:
      * 1. Schedule Pickup
@@ -66,23 +158,8 @@ class PickupAndDeliveryController extends Controller
         $search = $request->get('search');
         $perPage = 10;
 
-        // Auto-clean mock test records from database so only real data is used
-        try {
-            if (Schema::hasTable('pickup_deliveries')) {
-                $mockNames = [
-                    'Sokha Dara', 'Chan Sreyneath', 'Heng Channa', 'Kim Sovannary',
-                    'Neang Pheaktra', 'Lim Vannak', 'Thon Sreynich', 'Pich Sothey',
-                    'Chea Ratanak', 'Va Sovan', 'Keo Pisey', 'Meng Chhay'
-                ];
-                PickupDelivery::whereIn('customer_name', $mockNames)->delete();
-
-                if ($request->has('reset') || $request->has('clear')) {
-                    DB::table('pickup_deliveries')->truncate();
-                }
-            }
-        } catch (\Throwable $e) {
-            Log::error('Error cleaning mock data: ' . $e->getMessage());
-        }
+        // Auto-sync real orders from database into pickup_deliveries
+        $this->syncWithOrders();
 
         $totalPickups = 0;
         $totalDeliveries = 0;
@@ -132,7 +209,7 @@ class PickupAndDeliveryController extends Controller
             } elseif ($dateFilter === 'This Week') {
                 $tasksQuery->where(function ($q) {
                     $q->whereBetween('pickup_date', [now()->startOfWeek(), now()->endOfWeek()])
-                      ->orWhereBetween('delivery_date', [now()->startOfWeek(), now()->endOfWeek()]);
+                      ->orBetween('delivery_date', [now()->startOfWeek(), now()->endOfWeek()]);
                 });
             } elseif ($dateFilter === 'This Month') {
                 $tasksQuery->where(function ($q) {
@@ -170,12 +247,20 @@ class PickupAndDeliveryController extends Controller
         $staffList = $this->getDeliveryStaffList();
         $selectedTask = $tasks->count() > 0 ? $tasks->first() : null;
 
+        $availableOrders = [];
+        try {
+            if (Schema::hasTable('orders')) {
+                $availableOrders = Order::orderBy('id', 'desc')->get();
+            }
+        } catch (\Throwable $e) {}
+
         if ($request->ajax() || $request->wantsJson()) {
             return response()->json([
                 'success' => true,
                 'stats' => $stats,
                 'tasks' => $tasks,
                 'staffList' => $staffList,
+                'availableOrders' => $availableOrders,
                 'selectedTask' => $selectedTask,
             ]);
         }
@@ -184,6 +269,7 @@ class PickupAndDeliveryController extends Controller
             'tasks' => $tasks,
             'stats' => $stats,
             'staffList' => $staffList,
+            'availableOrders' => $availableOrders,
             'selectedTask' => $selectedTask,
             'activeTab' => $activeTab,
             'statusFilter' => $statusFilter,
@@ -216,7 +302,27 @@ class PickupAndDeliveryController extends Controller
         ]);
 
         if (empty($validated['order_number'])) {
-            $nextId = (PickupDelivery::max('id') ?? 0) + 1;
+            $maxOrders = 0;
+            try {
+                if (Schema::hasTable('orders')) {
+                    foreach (Order::all('order_number') as $o) {
+                        if (preg_match('/^ORD-(\d+)$/i', $o->order_number, $m)) {
+                            $maxOrders = max($maxOrders, (int)$m[1]);
+                        }
+                    }
+                }
+            } catch (\Throwable $e) {}
+
+            $maxPickup = 0;
+            try {
+                foreach (PickupDelivery::all('order_number') as $p) {
+                    if (preg_match('/^ORD-(\d+)$/i', $p->order_number, $m)) {
+                        $maxPickup = max($maxPickup, (int)$m[1]);
+                    }
+                }
+            } catch (\Throwable $e) {}
+
+            $nextId = max($maxOrders, $maxPickup) + 1;
             $validated['order_number'] = sprintf('ORD-%04d', $nextId);
         }
 
@@ -233,6 +339,35 @@ class PickupAndDeliveryController extends Controller
         }
 
         $task = PickupDelivery::create($validated);
+
+        // SYNC TO ORDERS TABLE:
+        try {
+            if (Schema::hasTable('orders')) {
+                $orderStatus = match(strtolower(trim($task->status))) {
+                    'in transit' => 'Out for Delivery',
+                    'delivered', 'completed' => 'Completed',
+                    default => 'Received',
+                };
+
+                Order::updateOrCreate(
+                    ['order_number' => $task->order_number],
+                    [
+                        'customer_name' => $task->customer_name,
+                        'customer_phone' => $task->customer_phone,
+                        'service_type' => $task->service_type,
+                        'total_price' => $task->total_amount ?? 15.00,
+                        'order_date' => now(),
+                        'pickup_date' => $task->pickup_date,
+                        'delivery_date' => $task->delivery_date,
+                        'customer_address' => $task->delivery_address ?: $task->pickup_address,
+                        'status' => $orderStatus,
+                        'notes' => $task->notes,
+                    ]
+                );
+            }
+        } catch (\Throwable $e) {
+            Log::warning('Sync task to orders failed: ' . $e->getMessage());
+        }
 
         if ($request->ajax() || $request->wantsJson()) {
             return response()->json([
@@ -310,6 +445,36 @@ class PickupAndDeliveryController extends Controller
         }
 
         $task->update(array_filter($validated, fn($val) => !is_null($val)));
+
+        // SYNC TO ORDERS TABLE
+        try {
+            if (Schema::hasTable('orders') && !empty($task->order_number)) {
+                $order = Order::where('order_number', $task->order_number)->first();
+                if ($order) {
+                    $orderUpdates = [];
+                    if (!empty($validated['customer_name'])) $orderUpdates['customer_name'] = $validated['customer_name'];
+                    if (!empty($validated['customer_phone'])) $orderUpdates['customer_phone'] = $validated['customer_phone'];
+                    if (!empty($validated['service_type'])) $orderUpdates['service_type'] = $validated['service_type'];
+                    if (isset($validated['total_amount'])) $orderUpdates['total_price'] = $validated['total_amount'];
+                    if (!empty($validated['pickup_date'])) $orderUpdates['pickup_date'] = $validated['pickup_date'];
+                    if (!empty($validated['delivery_date'])) $orderUpdates['delivery_date'] = $validated['delivery_date'];
+                    if (!empty($validated['delivery_address'])) $orderUpdates['customer_address'] = $validated['delivery_address'];
+                    if (!empty($validated['status'])) {
+                        $orderUpdates['status'] = match(strtolower(trim($validated['status']))) {
+                            'in transit' => 'Out for Delivery',
+                            'delivered', 'completed' => 'Completed',
+                            'picked up' => 'Washing',
+                            default => 'Received',
+                        };
+                    }
+                    if (!empty($orderUpdates)) {
+                        $order->update($orderUpdates);
+                    }
+                }
+            }
+        } catch (\Throwable $e) {
+            Log::warning('Sync task update to order failed: ' . $e->getMessage());
+        }
 
         if ($request->ajax() || $request->wantsJson()) {
             return response()->json([

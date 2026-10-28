@@ -6,28 +6,38 @@
 
     <!-- Success & Error Alerts -->
     @if(session('success'))
-        <div class="p-4 rounded-2xl bg-emerald-50 border border-emerald-200 text-emerald-800 flex items-center justify-between shadow-sm">
-            <div class="flex items-center space-x-3">
-                <i data-lucide="check-circle-2" class="w-5 h-5 text-emerald-600 shrink-0"></i>
-                <span class="text-sm font-medium">{{ session('success') }}</span>
-            </div>
-            <button type="button" onclick="this.parentElement.remove()" class="text-emerald-500 hover:text-emerald-700">
-                <i data-lucide="x" class="w-4 h-4"></i>
-            </button>
+    <div class="p-4 rounded-2xl bg-emerald-50 border border-emerald-200 text-emerald-800 flex items-center justify-between shadow-sm">
+        <div class="flex items-center space-x-3">
+            <i data-lucide="check-circle-2" class="w-5 h-5 text-emerald-600 shrink-0"></i>
+            <span class="text-sm font-medium">{{ session('success') }}</span>
         </div>
+        <script>
+            setTimeout(function() {
+                window.location.reload();
+            }, 400);
+        </script>
+    </div>
     @endif
 
     @if(session('error'))
-        <div class="p-4 rounded-2xl bg-rose-50 border border-rose-200 text-rose-800 flex items-center justify-between shadow-sm">
-            <div class="flex items-center space-x-3">
-                <i data-lucide="alert-circle" class="w-5 h-5 text-rose-600 shrink-0"></i>
-                <span class="text-sm font-medium">{{ session('error') }}</span>
-            </div>
-            <button type="button" onclick="this.parentElement.remove()" class="text-rose-500 hover:text-rose-700">
-                <i data-lucide="x" class="w-4 h-4"></i>
-            </button>
+    <div class="p-4 rounded-2xl bg-rose-50 border border-rose-200 text-rose-800 flex items-center justify-between shadow-sm">
+        <div class="flex items-center space-x-3">
+            <i data-lucide="alert-circle" class="w-5 h-5 text-rose-600 shrink-0"></i>
+            <span class="text-sm font-medium">{{ session('error') }}</span>
         </div>
+        <script>
+            setTimeout(function() {
+                window.location.reload();
+            }, 200);
+        </script>
+    </div>
     @endif
+    <div class="flex justify-end items-center">
+        <button type="button" onclick="openCreateOrderModal()" class="px-3.5 py-1.5 bg-[#2563EB] hover:bg-blue-700 text-white text-xs font-semibold rounded-xl transition flex items-center space-x-1.5 cursor-pointer">
+            <i data-lucide="plus" class="w-3.5 h-3.5"></i>
+            <span>New Order</span>
+        </button>
+    </div>
 
     <!-- 6 KPI / Stat Cards (Matching Screenshot 1) -->
     <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3.5">
@@ -107,7 +117,7 @@
     <!-- Search & Filter Bar (Matching Screenshot 1) -->
     <div class="bg-white rounded-2xl p-4 shadow-sm border border-gray-100">
         <form method="GET" action="{{ route('orders.index') }}" class="flex flex-wrap items-center gap-3">
-            
+
             <!-- Search Text Input -->
             <div class="flex-1 min-w-0 relative" style="min-width: 260px;">
                 <div class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-gray-400">
@@ -121,7 +131,7 @@
                 <select name="status" class="w-full px-3 py-2 bg-white border border-gray-200 rounded-xl text-xs sm:text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500 transition cursor-pointer">
                     <option value="All Status" {{ $selectedStatus === 'All Status' ? 'selected' : '' }}>All Status</option>
                     @foreach($availableStatuses as $st)
-                        <option value="{{ $st }}" {{ $selectedStatus === $st ? 'selected' : '' }}>{{ $st }}</option>
+                    <option value="{{ $st }}" {{ $selectedStatus === $st ? 'selected' : '' }}>{{ $st }}</option>
                     @endforeach
                 </select>
             </div>
@@ -131,7 +141,7 @@
                 <select name="service_type" class="w-full px-3 py-2 bg-white border border-gray-200 rounded-xl text-xs sm:text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500 transition cursor-pointer">
                     <option value="All Service Types" {{ $selectedService === 'All Service Types' ? 'selected' : '' }}>All Service Types</option>
                     @foreach($availableServices as $srv)
-                        <option value="{{ $srv }}" {{ $selectedService === $srv ? 'selected' : '' }}>{{ $srv }}</option>
+                    <option value="{{ $srv }}" {{ $selectedService === $srv ? 'selected' : '' }}>{{ $srv }}</option>
                     @endforeach
                 </select>
             </div>
@@ -161,7 +171,7 @@
 
     <!-- Table Card (Matching Screenshot 1) -->
     <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-        
+
         <!-- Table Card Header -->
         <div class="p-4 sm:p-5 border-b border-gray-100 flex items-center justify-between">
             <div class="flex items-center space-x-2.5">
@@ -169,12 +179,6 @@
                 <span class="bg-blue-50 text-blue-600 text-xs font-semibold px-2.5 py-0.5 rounded-full">
                     Total: {{ $stats['total_orders'] }}
                 </span>
-            </div>
-            <div>
-                <button type="button" onclick="openCreateOrderModal()" class="px-3.5 py-1.5 bg-[#2563EB] hover:bg-blue-700 text-white text-xs font-semibold rounded-xl transition flex items-center space-x-1.5 cursor-pointer">
-                    <i data-lucide="plus" class="w-3.5 h-3.5"></i>
-                    <span>New Order</span>
-                </button>
             </div>
         </div>
 
@@ -199,119 +203,119 @@
                 </thead>
                 <tbody class="divide-y divide-gray-100 text-xs text-gray-600">
                     @forelse($orders as $index => $order)
-                        @php
-                            $ordId = is_array($order) ? $order['id'] : $order->id;
-                            $ordNum = is_array($order) ? $order['order_number'] : $order->order_number;
-                            $custName = is_array($order) ? $order['customer_name'] : $order->customer_name;
-                            $servType = is_array($order) ? $order['service_type'] : $order->service_type;
-                            $weight = is_array($order) ? $order['weight'] : $order->weight;
-                            $itemsCount = is_array($order) ? $order['items_count'] : $order->items_count;
-                            $orderDate = is_array($order) ? $order['order_date'] : $order->order_date;
-                            $pickupDate = is_array($order) ? $order['pickup_date'] : $order->pickup_date;
-                            $delivDate = is_array($order) ? $order['delivery_date'] : $order->delivery_date;
-                            $totalPrice = is_array($order) ? $order['total_price'] : $order->total_price;
-                            $status = is_array($order) ? $order['status'] : $order->status;
+                    @php
+                    $ordId = is_array($order) ? $order['id'] : $order->id;
+                    $ordNum = is_array($order) ? $order['order_number'] : $order->order_number;
+                    $custName = is_array($order) ? $order['customer_name'] : $order->customer_name;
+                    $servType = is_array($order) ? $order['service_type'] : $order->service_type;
+                    $weight = is_array($order) ? $order['weight'] : $order->weight;
+                    $itemsCount = is_array($order) ? $order['items_count'] : $order->items_count;
+                    $orderDate = is_array($order) ? $order['order_date'] : $order->order_date;
+                    $pickupDate = is_array($order) ? $order['pickup_date'] : $order->pickup_date;
+                    $delivDate = is_array($order) ? $order['delivery_date'] : $order->delivery_date;
+                    $totalPrice = is_array($order) ? $order['total_price'] : $order->total_price;
+                    $status = is_array($order) ? $order['status'] : $order->status;
 
-                            // Pill style matching Screenshot 1
-                            $badgeMap = [
-                                'Received' => 'bg-gray-100 text-gray-700',
-                                'Pending' => 'bg-amber-100/70 text-amber-700',
-                                'Washing' => 'bg-sky-100 text-sky-700',
-                                'Drying' => 'bg-amber-100 text-amber-700',
-                                'Ironing' => 'bg-purple-100 text-purple-700',
-                                'Ready for Pickup' => 'bg-purple-100 text-purple-700',
-                                'Out for Delivery' => 'bg-teal-100 text-teal-700',
-                                'Completed' => 'bg-emerald-100 text-emerald-700',
-                                'Cancelled' => 'bg-rose-100 text-rose-700',
-                            ];
-                            $badgeCls = $badgeMap[$status] ?? 'bg-gray-100 text-gray-700';
-                        @endphp
-                        <tr class="hover:bg-blue-50/30 transition">
-                            <!-- Index -->
-                            <td class="py-3 px-3 text-center text-gray-400">
-                                {{ ($orders->currentPage() - 1) * $orders->perPage() + $index + 1 }}
-                            </td>
+                    // Pill style matching Screenshot 1
+                    $badgeMap = [
+                    'Received' => 'bg-gray-100 text-gray-700',
+                    'Pending' => 'bg-amber-100/70 text-amber-700',
+                    'Washing' => 'bg-sky-100 text-sky-700',
+                    'Drying' => 'bg-amber-100 text-amber-700',
+                    'Ironing' => 'bg-purple-100 text-purple-700',
+                    'Ready for Pickup' => 'bg-purple-100 text-purple-700',
+                    'Out for Delivery' => 'bg-teal-100 text-teal-700',
+                    'Completed' => 'bg-emerald-100 text-emerald-700',
+                    'Cancelled' => 'bg-rose-100 text-rose-700',
+                    ];
+                    $badgeCls = $badgeMap[$status] ?? 'bg-gray-100 text-gray-700';
+                    @endphp
+                    <tr class="hover:bg-blue-50/30 transition">
+                        <!-- Index -->
+                        <td class="py-3 px-3 text-center text-gray-400">
+                            {{ ($orders->currentPage() - 1) * $orders->perPage() + $index + 1 }}
+                        </td>
 
-                            <!-- Order Number -->
-                            <td class="py-3 px-3 font-bold text-gray-900 whitespace-nowrap cursor-pointer hover:text-blue-600 transition" data-id="{{ $ordId }}" onclick="handleViewOrderClick(this)">
-                                {{ $ordNum }}
-                            </td>
+                        <!-- Order Number -->
+                        <td class="py-3 px-3 font-bold text-gray-900 whitespace-nowrap cursor-pointer hover:text-blue-600 transition" data-id="{{ $ordId }}" onclick="handleViewOrderClick(this)">
+                            {{ $ordNum }}
+                        </td>
 
-                            <!-- Customer Name -->
-                            <td class="py-3 px-3 font-medium text-gray-800">
-                                {{ $custName }}
-                            </td>
+                        <!-- Customer Name -->
+                        <td class="py-3 px-3 font-medium text-gray-800">
+                            {{ $custName }}
+                        </td>
 
-                            <!-- Service Type -->
-                            <td class="py-3 px-3 text-gray-700 font-medium">
-                                {{ $servType }}
-                            </td>
+                        <!-- Service Type -->
+                        <td class="py-3 px-3 text-gray-700 font-medium">
+                            {{ $servType }}
+                        </td>
 
-                            <!-- Weight (Kg) -->
-                            <td class="py-3 px-3 text-gray-600">
-                                {{ number_format($weight, 1) }}
-                            </td>
+                        <!-- Weight (Kg) -->
+                        <td class="py-3 px-3 text-gray-600">
+                            {{ number_format($weight, 1) }}
+                        </td>
 
-                            <!-- Items -->
-                            <td class="py-3 px-3 text-gray-600">
-                                {{ $itemsCount }}
-                            </td>
+                        <!-- Items -->
+                        <td class="py-3 px-3 text-gray-600">
+                            {{ $itemsCount }}
+                        </td>
 
-                            <!-- Order Date -->
-                            <td class="py-3 px-3 text-gray-500 whitespace-nowrap">
-                                {{ date('Y-m-d', strtotime($orderDate)) }}
-                            </td>
+                        <!-- Order Date -->
+                        <td class="py-3 px-3 text-gray-500 whitespace-nowrap">
+                            {{ date('Y-m-d', strtotime($orderDate)) }}
+                        </td>
 
-                            <!-- Pickup Date -->
-                            <td class="py-3 px-3 text-gray-500 whitespace-nowrap">
-                                {{ $pickupDate ? date('Y-m-d', strtotime($pickupDate)) : '-' }}
-                            </td>
+                        <!-- Pickup Date -->
+                        <td class="py-3 px-3 text-gray-500 whitespace-nowrap">
+                            {{ $pickupDate ? date('Y-m-d', strtotime($pickupDate)) : '-' }}
+                        </td>
 
-                            <!-- Delivery Date -->
-                            <td class="py-3 px-3 text-gray-500 whitespace-nowrap">
-                                {{ $delivDate ? date('Y-m-d', strtotime($delivDate)) : '-' }}
-                            </td>
+                        <!-- Delivery Date -->
+                        <td class="py-3 px-3 text-gray-500 whitespace-nowrap">
+                            {{ $delivDate ? date('Y-m-d', strtotime($delivDate)) : '-' }}
+                        </td>
 
-                            <!-- Total Price -->
-                            <td class="py-3 px-3 font-bold text-gray-900 whitespace-nowrap">
-                                ${{ number_format($totalPrice, 2) }}
-                            </td>
+                        <!-- Total Price -->
+                        <td class="py-3 px-3 font-bold text-gray-900 whitespace-nowrap">
+                            ${{ number_format($totalPrice, 2) }}
+                        </td>
 
-                            <!-- Status Pill Badge -->
-                            <td class="py-3 px-3 text-center whitespace-nowrap">
-                                <span class="inline-block px-3 py-1 rounded-full text-[11px] font-semibold {{ $badgeCls }}">
-                                    {{ $status }}
-                                </span>
-                            </td>
+                        <!-- Status Pill Badge -->
+                        <td class="py-3 px-3 text-center whitespace-nowrap">
+                            <span class="inline-block px-3 py-1 rounded-full text-[11px] font-semibold {{ $badgeCls }}">
+                                {{ $status }}
+                            </span>
+                        </td>
 
-                            <!-- Actions: [Eye (cyan)] [Pencil (green)] [Trash (red)] -->
-                            <td class="py-3 px-3 text-center whitespace-nowrap">
-                                <div class="flex items-center justify-center space-x-1.5">
-                                    <!-- Eye icon: View Details (Cyan/Sky blue button) -->
-                                    <button type="button" data-id="{{ $ordId }}" onclick="handleViewOrderClick(this)" title="View Order Details" class="w-7 h-7 rounded-lg bg-[#00A5EC] hover:bg-sky-600 text-white flex items-center justify-center transition shadow-sm cursor-pointer">
-                                        <i data-lucide="eye" class="w-3.5 h-3.5"></i>
-                                    </button>
+                        <!-- Actions: [Eye (cyan)] [Pencil (green)] [Trash (red)] -->
+                        <td class="py-3 px-3 text-center whitespace-nowrap">
+                            <div class="flex items-center justify-center space-x-1.5">
+                                <!-- Eye icon: View Details (Cyan/Sky blue button) -->
+                                <button type="button" data-id="{{ $ordId }}" onclick="handleViewOrderClick(this)" title="View Order Details" class="w-7 h-7 rounded-lg bg-[#2563EB] hover:bg-blue-700 text-white flex items-center justify-center transition shadow-sm cursor-pointer">
+                                    <i data-lucide="eye" class="w-3.5 h-3.5"></i>
+                                </button>
 
-                                    <!-- Pencil icon: Edit Order (Emerald green button) -->
-                                    <button type="button" data-id="{{ $ordId }}" onclick="handleEditOrderClick(this)" title="Update Order" class="w-7 h-7 rounded-lg bg-[#10B981] hover:bg-emerald-600 text-white flex items-center justify-center transition shadow-sm cursor-pointer">
-                                        <i data-lucide="pencil" class="w-3.5 h-3.5"></i>
-                                    </button>
+                                <!-- Pencil icon: Edit Order (Emerald green button) -->
+                                <button type="button" data-id="{{ $ordId }}" onclick="handleEditOrderClick(this)" title="Update Order" class="w-7 h-7 rounded-lg bg-[#10B981] hover:bg-emerald-600 text-white flex items-center justify-center transition shadow-sm cursor-pointer">
+                                    <i data-lucide="pencil" class="w-3.5 h-3.5"></i>
+                                </button>
 
-                                    <!-- Trash icon: Cancel / Delete (Rose/Red button) -->
-                                    <button type="button" data-id="{{ $ordId }}" data-num="{{ $ordNum }}" onclick="handleCancelOrderClick(this)" title="Cancel Order" class="w-7 h-7 rounded-lg bg-[#EF4444] hover:bg-rose-600 text-white flex items-center justify-center transition shadow-sm cursor-pointer">
-                                        <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
-                                    </button>
-                                </div>
-                            </td>
-                        </tr>
+                                <!-- Trash icon: Cancel / Delete (Rose/Red button) -->
+                                <button type="button" data-id="{{ $ordId }}" data-num="{{ $ordNum }}" onclick="handleCancelOrderClick(this)" title="Cancel Order" class="w-7 h-7 rounded-lg bg-[#EF4444] hover:bg-rose-600 text-white flex items-center justify-center transition shadow-sm cursor-pointer">
+                                    <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
                     @empty
-                        <tr>
-                            <td colspan="12" class="py-12 text-center text-gray-400">
-                                <i data-lucide="package-x" class="w-10 h-10 mx-auto text-gray-300 mb-2"></i>
-                                <p class="text-sm font-semibold text-gray-600">No laundry orders found.</p>
-                                <p class="text-xs text-gray-400 mt-0.5">Try adjusting your filters or add a new order.</p>
-                            </td>
-                        </tr>
+                    <tr>
+                        <td colspan="12" class="py-12 text-center text-gray-400">
+                            <i data-lucide="package-x" class="w-10 h-10 mx-auto text-gray-300 mb-2"></i>
+                            <p class="text-sm font-semibold text-gray-600">No laundry orders found.</p>
+                            <p class="text-xs text-gray-400 mt-0.5">Try adjusting your filters or add a new order.</p>
+                        </td>
+                    </tr>
                     @endforelse
                 </tbody>
             </table>
@@ -324,24 +328,24 @@
             </div>
             <div class="flex items-center space-x-1">
                 @if ($orders->onFirstPage())
-                    <span class="w-8 h-8 rounded-lg border border-gray-200 text-gray-300 flex items-center justify-center cursor-not-allowed">&lt;</span>
+                <span class="w-8 h-8 rounded-lg border border-gray-200 text-gray-300 flex items-center justify-center cursor-not-allowed">&lt;</span>
                 @else
-                    <a href="{{ $orders->previousPageUrl() }}" class="w-8 h-8 rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50 flex items-center justify-center transition">&lt;</a>
+                <a href="{{ $orders->previousPageUrl() }}" class="w-8 h-8 rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50 flex items-center justify-center transition">&lt;</a>
                 @endif
 
                 @for ($page = 1; $page <= min(4, $orders->lastPage()); $page++)
                     @if ($page == $orders->currentPage())
-                        <span class="w-8 h-8 rounded-lg bg-[#2563EB] text-white font-bold flex items-center justify-center shadow-sm">{{ $page }}</span>
+                    <span class="w-8 h-8 rounded-lg bg-[#2563EB] text-white font-bold flex items-center justify-center shadow-sm">{{ $page }}</span>
                     @else
-                        <a href="{{ $orders->url($page) }}" class="w-8 h-8 rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50 flex items-center justify-center transition">{{ $page }}</a>
+                    <a href="{{ $orders->url($page) }}" class="w-8 h-8 rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50 flex items-center justify-center transition">{{ $page }}</a>
                     @endif
-                @endfor
+                    @endfor
 
-                @if ($orders->hasMorePages())
+                    @if ($orders->hasMorePages())
                     <a href="{{ $orders->nextPageUrl() }}" class="w-8 h-8 rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50 flex items-center justify-center transition">&gt;</a>
-                @else
+                    @else
                     <span class="w-8 h-8 rounded-lg border border-gray-200 text-gray-300 flex items-center justify-center cursor-not-allowed">&gt;</span>
-                @endif
+                    @endif
             </div>
         </div>
     </div>
@@ -353,7 +357,7 @@
 <!-- ======================================================== -->
 <div id="viewOrderModal" class="hidden fixed inset-0 z-50 overflow-y-auto bg-gray-900/60 backdrop-blur-xs flex items-center justify-center p-4">
     <div class="bg-white rounded-3xl max-w-xl w-full p-2 shadow-2xl border border-gray-100 transform transition-all relative">
-        
+
         <!-- Modal Top Title & Close Button -->
         <div class="flex items-center justify-between pb-3">
             <h3 class="text-xl font-bold text-gray-900 tracking-tight">Order Details</h3>
@@ -375,7 +379,7 @@
         </div>
 
         <div class="mt-4 space-y-3.5 max-h-[72vh] overflow-y-auto pr-1">
-            
+
             <!-- Box 1: Customer Information -->
             <div class="bg-white rounded-2xl p-4 border border-gray-100 shadow-xs">
                 <div class="flex items-center justify-between mb-3">
@@ -575,7 +579,7 @@
             </a>
 
             <!-- Middle: Update Order (Solid Blue) -->
-            <button type="button" onclick="triggerEditFromModal()" class="py-2.5 px-3 bg-[#0066FF] hover:bg-blue-700 text-white font-semibold text-xs rounded-xl transition flex items-center justify-center space-x-1.5 shadow-sm cursor-pointer">
+            <button type="button" onclick="triggerEditFromModal()" class="py-2.5 px-3 bg-[#2563EB] hover:bg-blue-700 text-white font-semibold text-xs rounded-xl transition flex items-center justify-center space-x-1.5 shadow-sm cursor-pointer">
                 <i data-lucide="pencil" class="w-3.5 h-3.5"></i>
                 <span>Update Order</span>
             </button>
@@ -636,7 +640,7 @@
                     <label class="block text-xs font-semibold text-gray-700 mb-1">Service Type *</label>
                     <select name="service_type" id="editServiceType" required class="w-full px-2 py-2 bg-gray-50 border border-gray-200 rounded-xl text-xs focus:ring-2 focus:ring-blue-500">
                         @foreach($availableServices as $srv)
-                            <option value="{{ $srv }}">{{ $srv }}</option>
+                        <option value="{{ $srv }}">{{ $srv }}</option>
                         @endforeach
                     </select>
                 </div>
@@ -655,7 +659,7 @@
                     <label class="block text-xs font-semibold text-gray-700 mb-1">Order Status *</label>
                     <select name="status" id="editStatus" required class="w-full px-2 py-2 bg-gray-50 border border-gray-200 rounded-xl text-xs font-semibold text-blue-700 focus:ring-2 focus:ring-blue-500">
                         @foreach($availableStatuses as $st)
-                            <option value="{{ $st }}">{{ $st }}</option>
+                        <option value="{{ $st }}">{{ $st }}</option>
                         @endforeach
                     </select>
                 </div>
@@ -733,7 +737,7 @@
                     <label class="block text-xs font-semibold text-gray-700 mb-1">Service Type *</label>
                     <select name="service_type" required class="w-full px-2 py-2 bg-gray-50 border border-gray-200 rounded-xl text-xs focus:ring-2 focus:ring-blue-500">
                         @foreach($availableServices as $srv)
-                            <option value="{{ $srv }}">{{ $srv }}</option>
+                        <option value="{{ $srv }}">{{ $srv }}</option>
                         @endforeach
                     </select>
                 </div>
@@ -752,7 +756,7 @@
                     <label class="block text-xs font-semibold text-gray-700 mb-1">Status</label>
                     <select name="status" class="w-full px-2 py-2 bg-gray-50 border border-gray-200 rounded-xl text-xs focus:ring-2 focus:ring-blue-500">
                         @foreach($availableStatuses as $st)
-                            <option value="{{ $st }}">{{ $st }}</option>
+                        <option value="{{ $st }}">{{ $st }}</option>
                         @endforeach
                     </select>
                 </div>
@@ -853,58 +857,60 @@
     // View Order Details
     function viewOrderDetails(orderId) {
         fetch(`{{ url('/orders') }}/${orderId}`, {
-            headers: { 'Accept': 'application/json' }
-        })
-        .then(res => res.json())
-        .then(data => {
-            if (!data.success || !data.order) {
-                alert('Order details could not be loaded.');
-                return;
-            }
+                headers: {
+                    'Accept': 'application/json'
+                }
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (!data.success || !data.order) {
+                    alert('Order details could not be loaded.');
+                    return;
+                }
 
-            const ord = data.order;
-            const items = data.items || [];
-            currentActiveOrder = ord;
+                const ord = data.order;
+                const items = data.items || [];
+                currentActiveOrder = ord;
 
-            // Set Header details
-            document.getElementById('modalOrderNumber').textContent = ord.order_number;
-            const dtString = ord.order_date.includes(' ') ? ord.order_date : `${ord.order_date} 10:24 AM`;
-            document.getElementById('modalOrderDateTime').textContent = `Order Date: ${dtString}`;
+                // Set Header details
+                document.getElementById('modalOrderNumber').textContent = ord.order_number;
+                const dtString = ord.order_date.includes(' ') ? ord.order_date : `${ord.order_date} 10:24 AM`;
+                document.getElementById('modalOrderDateTime').textContent = `Order Date: ${dtString}`;
 
-            // Header Status Pill
-            const badge = document.getElementById('modalStatusBadge');
-            badge.textContent = ord.status;
-            badge.className = `px-3 py-0.5 rounded-full text-xs font-semibold ${getStatusBadgeClass(ord.status)}`;
+                // Header Status Pill
+                const badge = document.getElementById('modalStatusBadge');
+                badge.textContent = ord.status;
+                badge.className = `px-3 py-0.5 rounded-full text-xs font-semibold ${getStatusBadgeClass(ord.status)}`;
 
-            // Customer details
-            document.getElementById('modalCustomerName').textContent = ord.customer_name;
-            document.getElementById('modalCustomerPhone').textContent = ord.customer_phone || '012 345 678';
-            document.getElementById('modalCustomerEmail').textContent = ord.customer_email || 'sokha@example.com';
-            document.getElementById('modalCustomerAddress').textContent = ord.customer_address || 'Svay Dongkum, Siem Reap';
+                // Customer details
+                document.getElementById('modalCustomerName').textContent = ord.customer_name;
+                document.getElementById('modalCustomerPhone').textContent = ord.customer_phone || '012 345 678';
+                document.getElementById('modalCustomerEmail').textContent = ord.customer_email || 'sokha@example.com';
+                document.getElementById('modalCustomerAddress').textContent = ord.customer_address || 'Svay Dongkum, Siem Reap';
 
-            // Order Specs Box
-            document.getElementById('modalServiceType').textContent = ord.service_type;
-            document.getElementById('modalWeight').textContent = `${parseFloat(ord.weight).toFixed(1)} kg`;
-            document.getElementById('modalItemsCount').textContent = ord.items_count;
-            document.getElementById('modalOrderDateVal').textContent = dtString;
-            document.getElementById('modalPickupDate').textContent = ord.pickup_date ? ord.pickup_date.substring(0, 10) : '2025-09-16';
-            document.getElementById('modalDeliveryDate').textContent = ord.delivery_date ? ord.delivery_date.substring(0, 10) : '2025-09-17';
-            document.getElementById('modalTotalPrice').textContent = `$${parseFloat(ord.total_price).toFixed(2)}`;
-            document.getElementById('modalTableSummaryTotal').textContent = `$${parseFloat(ord.total_price).toFixed(2)}`;
+                // Order Specs Box
+                document.getElementById('modalServiceType').textContent = ord.service_type;
+                document.getElementById('modalWeight').textContent = `${parseFloat(ord.weight).toFixed(1)} kg`;
+                document.getElementById('modalItemsCount').textContent = ord.items_count;
+                document.getElementById('modalOrderDateVal').textContent = dtString;
+                document.getElementById('modalPickupDate').textContent = ord.pickup_date ? ord.pickup_date.substring(0, 10) : '2025-09-16';
+                document.getElementById('modalDeliveryDate').textContent = ord.delivery_date ? ord.delivery_date.substring(0, 10) : '2025-09-17';
+                document.getElementById('modalTotalPrice').textContent = `$${parseFloat(ord.total_price).toFixed(2)}`;
+                document.getElementById('modalTableSummaryTotal').textContent = `$${parseFloat(ord.total_price).toFixed(2)}`;
 
-            // Print Receipt Link
-            document.getElementById('modalPrintReceiptBtn').href = `{{ url('/orders') }}/${ord.id}/print`;
+                // Print Receipt Link
+                document.getElementById('modalPrintReceiptBtn').href = `{{ url('/orders') }}/${ord.id}/print`;
 
-            // Stepper update
-            updateStepperVisuals(ord.status);
+                // Stepper update
+                updateStepperVisuals(ord.status);
 
-            // Table items
-            const tbody = document.getElementById('modalItemsTableBody');
-            tbody.innerHTML = '';
+                // Table items
+                const tbody = document.getElementById('modalItemsTableBody');
+                tbody.innerHTML = '';
 
-            if (items && items.length > 0) {
-                items.forEach((it, idx) => {
-                    const row = `
+                if (items && items.length > 0) {
+                    items.forEach((it, idx) => {
+                        const row = `
                         <tr>
                             <td class="py-2 px-2.5 text-blue-600 font-medium">${idx + 1}</td>
                             <td class="py-2 px-2.5 font-medium text-gray-800">${it.service_name}</td>
@@ -913,10 +919,10 @@
                             <td class="py-2 px-2.5 text-right font-bold text-gray-900">$${parseFloat(it.subtotal).toFixed(2)}</td>
                         </tr>
                     `;
-                    tbody.insertAdjacentHTML('beforeend', row);
-                });
-            } else {
-                const fallback = `
+                        tbody.insertAdjacentHTML('beforeend', row);
+                    });
+                } else {
+                    const fallback = `
                     <tr>
                         <td class="py-2 px-2.5 text-blue-600 font-medium">1</td>
                         <td class="py-2 px-2.5 font-medium text-gray-800">${ord.service_type}</td>
@@ -932,27 +938,35 @@
                         <td class="py-2 px-2.5 text-right font-bold text-gray-900">$5.00</td>
                     </tr>
                 `;
-                tbody.insertAdjacentHTML('beforeend', fallback);
-            }
+                    tbody.insertAdjacentHTML('beforeend', fallback);
+                }
 
-            openOrderModal('viewOrderModal');
-        })
-        .catch(err => {
-            console.error(err);
-            alert('Failed to load order details.');
-        });
+                openOrderModal('viewOrderModal');
+            })
+            .catch(err => {
+                console.error(err);
+                alert('Failed to load order details.');
+            });
     }
 
     function getStatusBadgeClass(st) {
-        switch(st) {
-            case 'Washing': return 'bg-sky-100 text-sky-700';
-            case 'Drying': return 'bg-amber-100 text-amber-700';
-            case 'Ready for Pickup': return 'bg-purple-100 text-purple-700';
-            case 'Out for Delivery': return 'bg-teal-100 text-teal-700';
-            case 'Completed': return 'bg-emerald-100 text-emerald-700';
-            case 'Received': return 'bg-gray-100 text-gray-700';
-            case 'Cancelled': return 'bg-rose-100 text-rose-700';
-            default: return 'bg-gray-100 text-gray-700';
+        switch (st) {
+            case 'Washing':
+                return 'bg-sky-100 text-sky-700';
+            case 'Drying':
+                return 'bg-amber-100 text-amber-700';
+            case 'Ready for Pickup':
+                return 'bg-purple-100 text-purple-700';
+            case 'Out for Delivery':
+                return 'bg-teal-100 text-teal-700';
+            case 'Completed':
+                return 'bg-emerald-100 text-emerald-700';
+            case 'Received':
+                return 'bg-gray-100 text-gray-700';
+            case 'Cancelled':
+                return 'bg-rose-100 text-rose-700';
+            default:
+                return 'bg-gray-100 text-gray-700';
         }
     }
 
@@ -1058,39 +1072,41 @@
     // Open Edit Order Modal
     function editOrder(orderId) {
         fetch(`{{ url('/orders') }}/${orderId}`, {
-            headers: { 'Accept': 'application/json' }
-        })
-        .then(res => res.json())
-        .then(data => {
-            if (!data.success || !data.order) {
-                alert('Order details could not be loaded for editing.');
-                return;
-            }
+                headers: {
+                    'Accept': 'application/json'
+                }
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (!data.success || !data.order) {
+                    alert('Order details could not be loaded for editing.');
+                    return;
+                }
 
-            const ord = data.order;
-            const form = document.getElementById('editOrderForm');
-            form.action = `{{ url('/orders') }}/${ord.id}`;
+                const ord = data.order;
+                const form = document.getElementById('editOrderForm');
+                form.action = `{{ url('/orders') }}/${ord.id}`;
 
-            document.getElementById('editOrderModalSub').textContent = ord.order_number;
-            document.getElementById('editCustomerName').value = ord.customer_name;
-            document.getElementById('editCustomerPhone').value = ord.customer_phone || '';
-            document.getElementById('editCustomerEmail').value = ord.customer_email || '';
-            document.getElementById('editCustomerAddress').value = ord.customer_address || '';
-            document.getElementById('editServiceType').value = ord.service_type;
-            document.getElementById('editWeight').value = ord.weight;
-            document.getElementById('editItemsCount').value = ord.items_count;
-            document.getElementById('editStatus').value = ord.status;
-            document.getElementById('editPickupDate').value = ord.pickup_date ? ord.pickup_date.substring(0, 10) : '';
-            document.getElementById('editDeliveryDate').value = ord.delivery_date ? ord.delivery_date.substring(0, 10) : '';
-            document.getElementById('editTotalPrice').value = ord.total_price;
-            document.getElementById('editNotes').value = ord.notes || '';
+                document.getElementById('editOrderModalSub').textContent = ord.order_number;
+                document.getElementById('editCustomerName').value = ord.customer_name;
+                document.getElementById('editCustomerPhone').value = ord.customer_phone || '';
+                document.getElementById('editCustomerEmail').value = ord.customer_email || '';
+                document.getElementById('editCustomerAddress').value = ord.customer_address || '';
+                document.getElementById('editServiceType').value = ord.service_type;
+                document.getElementById('editWeight').value = ord.weight;
+                document.getElementById('editItemsCount').value = ord.items_count;
+                document.getElementById('editStatus').value = ord.status;
+                document.getElementById('editPickupDate').value = ord.pickup_date ? ord.pickup_date.substring(0, 10) : '';
+                document.getElementById('editDeliveryDate').value = ord.delivery_date ? ord.delivery_date.substring(0, 10) : '';
+                document.getElementById('editTotalPrice').value = ord.total_price;
+                document.getElementById('editNotes').value = ord.notes || '';
 
-            openOrderModal('editOrderModal');
-        })
-        .catch(err => {
-            console.error(err);
-            alert('Failed to load order for editing.');
-        });
+                openOrderModal('editOrderModal');
+            })
+            .catch(err => {
+                console.error(err);
+                alert('Failed to load order for editing.');
+            });
     }
 
     // Open Cancel Order Modal

@@ -1,6 +1,6 @@
 @extends('layouts.navbar')
 
-@section('title', 'Notification Management - Laundry 6 Plus')
+@section('title', 'Notifications')
 
 @section('content')
 <div class="space-y-6 w-full mx-auto">
@@ -12,7 +12,11 @@
                 <i class="fa-solid fa-circle-check text-emerald-600 text-base"></i>
                 <span class="font-medium">{{ session('success') }}</span>
             </div>
-            <button type="button" onclick="this.parentElement.remove()" class="text-emerald-600 hover:text-emerald-800 text-lg leading-none cursor-pointer">&times;</button>
+            <script>
+            setTimeout(function() {
+                window.location.reload();
+            }, 200);
+        </script>
         </div>
     @endif
 
@@ -49,7 +53,7 @@
                 <span class="text-sm font-semibold text-gray-800">Order Ready</span>
             </div>
             <div class="mt-4">
-                <h3 class="text-xl sm:text-xl font-bold text-gray-900 leading-none" id="stat-order-ready">{{ $stats['order_ready'] ?? 12 }}</h3>
+                <h3 class="text-xl sm:text-xl font-bold text-gray-900 leading-none" id="stat-order-ready">{{ $stats['order_ready'] ?? 0 }}</h3>
             </div>
             <div class="mt-3 flex items-center justify-between text-xs pt-1 border-t border-blue-100/40">
                 <span class="text-gray-400 font-medium">Today's notifications</span>
@@ -68,7 +72,7 @@
                 <span class="text-sm font-semibold text-gray-800">Pickup Reminder</span>
             </div>
             <div class="mt-4">
-                <h3 class="text-xl sm:text-xl font-bold text-gray-900 leading-none" id="stat-pickup">{{ $stats['pickup_reminder'] ?? 8 }}</h3>
+                <h3 class="text-xl sm:text-xl font-bold text-gray-900 leading-none" id="stat-pickup">{{ $stats['pickup_reminder'] ?? 0 }}</h3>
             </div>
             <div class="mt-3 flex items-center justify-between text-xs pt-1 border-t border-emerald-100/40">
                 <span class="text-gray-400 font-medium">Today's notifications</span>
@@ -87,7 +91,7 @@
                 <span class="text-sm font-semibold text-gray-800">Delivery Reminder</span>
             </div>
             <div class="mt-4">
-                <h3 class="text-xl sm:text-xl font-bold text-gray-900 leading-none" id="stat-delivery">{{ $stats['delivery_reminder'] ?? 6 }}</h3>
+                <h3 class="text-xl sm:text-xl font-bold text-gray-900 leading-none" id="stat-delivery">{{ $stats['delivery_reminder'] ?? 0 }}</h3>
             </div>
             <div class="mt-3 flex items-center justify-between text-xs pt-1 border-t border-amber-100/40">
                 <span class="text-gray-400 font-medium">Today's notifications</span>
@@ -106,7 +110,7 @@
                 <span class="text-sm font-semibold text-gray-800">Payment Reminder</span>
             </div>
             <div class="mt-4">
-                <h3 class="text-xl sm:text-xl font-bold text-gray-900 leading-none" id="stat-payment">{{ $stats['payment_reminder'] ?? 4 }}</h3>
+                <h3 class="text-xl sm:text-xl font-bold text-gray-900 leading-none" id="stat-payment">{{ $stats['payment_reminder'] ?? 0 }}</h3>
             </div>
             <div class="mt-3 flex items-center justify-between text-xs pt-1 border-t border-purple-100/40">
                 <span class="text-gray-400 font-medium">Today's notifications</span>
@@ -125,7 +129,7 @@
                 <span class="text-sm font-semibold text-gray-800">Promotion Notification</span>
             </div>
             <div class="mt-4">
-                <h3 class="text-xl sm:text-xl font-bold text-gray-900 leading-none" id="stat-promotion">{{ $stats['promotion'] ?? 3 }}</h3>
+                <h3 class="text-xl sm:text-xl font-bold text-gray-900 leading-none" id="stat-promotion">{{ $stats['promotion'] ?? 0 }}</h3>
             </div>
             <div class="mt-3 flex items-center justify-between text-xs pt-1 border-t border-rose-100/40">
                 <span class="text-gray-400 font-medium">Today's notifications</span>
@@ -370,7 +374,7 @@
         <!-- Pagination Footer (Matching media_1791125092242.png: ← 1 2 3 4 →) -->
         <div class="p-4 sm:p-5 border-t border-gray-100 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-gray-500">
             <div>
-                Showing {{ ($page - 1) * $perPage + 1 }} - {{ min($page * $perPage, $filteredCount) }} of {{ $filteredCount }} notifications
+                Showing {{ $filteredCount > 0 ? (($page - 1) * $perPage + 1) : 0 }} - {{ min($page * $perPage, $filteredCount) }} of {{ $filteredCount }} notifications
             </div>
             <div class="flex items-center space-x-1.5">
                 <!-- Prev Button -->
@@ -416,7 +420,7 @@
 <!-- CREATE NOTIFICATION MODAL (Matching media_1791125150907.png) -->
 <!-- ========================================== -->
 <div id="createNotificationModal" class="fixed inset-0 bg-black/40 backdrop-blur-xs z-50 flex items-center justify-center p-4 hidden">
-    <div class="bg-white rounded-3xl shadow-2xl max-w-lg w-full p-6 sm:p-7 relative max-h-[92vh] overflow-y-auto">
+    <div class="bg-white rounded-3xl shadow-2xl max-w-lg w-full p-4 sm:p-5 relative max-h-250 overflow-y-auto">
         <!-- Close Button -->
         <button type="button" onclick="closeCreateNotificationModal()" class="absolute top-6 right-6 text-gray-400 hover:text-gray-600 transition cursor-pointer">
             <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">

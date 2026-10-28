@@ -7,13 +7,26 @@
 
     <!-- Flash Notifications -->
     @if(session('success'))
-        <div class="p-4 rounded-2xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-sm flex items-center justify-between shadow-xs animate-fade-in">
+        <div id="flashSuccessAlert" class="p-4 rounded-2xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-sm flex items-center justify-between shadow-xs transition-all duration-500 animate-fade-in">
             <div class="flex items-center space-x-3">
                 <i class="fa-solid fa-circle-check text-emerald-600 text-base"></i>
                 <span class="font-medium">{{ session('success') }}</span>
             </div>
-            <button type="button" onclick="this.parentElement.remove()" class="text-emerald-600 hover:text-emerald-800 text-lg leading-none cursor-pointer">&times;</button>
-        </div>
+            <script>
+            setTimeout(function() {
+                window.location.reload();
+            }, 200);
+        </script>
+        <script>
+            setTimeout(function() {
+                const el = document.getElementById('flashSuccessAlert');
+                if (el) {
+                    el.style.opacity = '0';
+                    el.style.transform = 'translateY(-6px)';
+                    setTimeout(() => el.remove(), 400);
+                }
+            }, 3500);
+        </script>
     @endif
 
     @if(session('error'))
@@ -407,10 +420,10 @@
 </div>
 
 <!-- ========================================== -->
-<!-- ADD PROMOTION MODAL (Matching media_1791123168967.png) -->
+<!-- ADD PROMOTION MODAL -->
 <!-- ========================================== -->
-<div id="addPromotionModal" class="fixed inset-0 bg-black/40 backdrop-blur-xs z-50 flex items-center justify-center p-4 hidden">
-    <div class="bg-white rounded-3xl shadow-2xl max-w-lg w-full p-6 sm:p-7 relative max-h-[92vh] overflow-y-auto">
+<div id="addPromotionModal" class="fixed inset-0 bg-black/40 backdrop-blur-xs z-50 flex items-center justify-center p-4 hidden scrollbar-hide">
+    <div class="bg-white rounded-3xl shadow-2xl max-w-lg w-full p-4 sm:p-5 relative max-h-250 overflow-y-auto">
         <!-- Close Button -->
         <button type="button" onclick="closeAddPromotionModal()" class="absolute top-6 right-6 text-gray-400 hover:text-gray-600 transition cursor-pointer">
             <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">

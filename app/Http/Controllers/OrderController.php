@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\Customer;
+use App\Models\PickupDelivery;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Log;
@@ -267,6 +268,34 @@ class OrderController extends Controller
                         'subtotal' => $validated['total_price'],
                     ]);
                 }
+
+                // Sync to Pickup & Delivery
+                if (Schema::hasTable('pickup_deliveries')) {
+                    $pickupStatus = match(strtolower(trim($status))) {
+                        'out for delivery' => 'In Transit',
+                        'completed' => 'Delivered',
+                        'ready for pickup' => 'Picked Up',
+                        default => 'Scheduled',
+                    };
+
+                    PickupDelivery::updateOrCreate(
+                        ['order_number' => $order->order_number],
+                        [
+                            'customer_name' => $order->customer_name,
+                            'customer_phone' => $order->customer_phone,
+                            'service_type' => $order->service_type,
+                            'total_amount' => $order->total_price,
+                            'pickup_date' => $order->pickup_date,
+                            'pickup_time' => '09:00 AM',
+                            'pickup_address' => $order->customer_address ?: 'Customer Location',
+                            'delivery_date' => $order->delivery_date,
+                            'delivery_time' => '02:00 PM',
+                            'delivery_address' => $order->customer_address ?: 'Customer Location',
+                            'status' => $pickupStatus,
+                            'notes' => $order->notes,
+                        ]
+                    );
+                }
             } catch (\Throwable $e) {
                 Log::warning("Order DB store failed, continuing with session: " . $e->getMessage());
                 $order = null;
@@ -408,6 +437,31 @@ class OrderController extends Controller
         if ($hasDb) {
             $order = Order::find($id) ?? Order::where('order_number', $id)->firstOrFail();
             $order->update($validated);
+
+            // Sync to Pickup & Delivery
+            if (Schema::hasTable('pickup_deliveries')) {
+                $pickupStatus = match(strtolower(trim($validated['status'] ?? ''))) {
+                    'out for delivery' => 'In Transit',
+                    'completed' => 'Delivered',
+                    'ready for pickup' => 'Picked Up',
+                    default => 'Scheduled',
+                };
+
+                PickupDelivery::updateOrCreate(
+                    ['order_number' => $order->order_number],
+                    [
+                        'customer_name' => $order->customer_name,
+                        'customer_phone' => $order->customer_phone,
+                        'service_type' => $order->service_type,
+                        'total_amount' => $order->total_price,
+                        'pickup_date' => $order->pickup_date,
+                        'delivery_date' => $order->delivery_date,
+                        'delivery_address' => $order->customer_address,
+                        'status' => $pickupStatus,
+                        'notes' => $order->notes,
+                    ]
+                );
+            }
 
             return redirect()->route('orders.index')
                              ->with('success', "Order {$order->order_number} updated successfully!");

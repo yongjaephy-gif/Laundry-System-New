@@ -65,12 +65,120 @@ class PaymentController extends Controller
     }
 
     /**
+     * Synchronize orders into payments table.
+     */
+    private function syncOrdersToPayments(): void
+    {
+        try {
+            if (!Schema::hasTable('orders') || !Schema::hasTable('payments')) {
+                return;
+            }
+
+            $columns = Schema::getColumnListing('payments');
+            $amtCol = $this->resolveAmountColumn($columns);
+            $realOrders = Order::all();
+            if ($realOrders->isEmpty()) {
+                return;
+            }
+
+            $realOrderNumbers = $realOrders->pluck('order_number')->filter()->toArray();
+
+            // Find max payment id number
+            $allPayments = Payment::all();
+            $maxPayNum = 0;
+            foreach ($allPayments as $p) {
+                $pid = $p->payment_id ?? $p->id;
+                if (is_numeric($pid)) {
+                    $maxPayNum = max($maxPayNum, (int)$pid);
+                } elseif (preg_match('/^PAY-(\d+)$/i', (string)$pid, $m)) {
+                    $maxPayNum = max($maxPayNum, (int)$m[1]);
+                }
+            }
+
+            // Remove old dummy test payments from 2024/2025 that don't match any real order
+            $mockNames = [
+                'Sokha Dara', 'Chan Sreyneath', 'Heng Channa', 'Kim Sovannary',
+                'Neang Pheaktra', 'Lim Vannak', 'Thon Sreynich', 'Pich Sothey',
+                'Chea Ratanak', 'Va Sovan', 'Keo Pisey', 'Meng Chhay'
+            ];
+            foreach ($allPayments as $p) {
+                if (in_array($p->customer_name, $mockNames) && !in_array($p->order_number, $realOrderNumbers)) {
+                    try {
+                        $p->delete();
+                    } catch (\Throwable $de) {}
+                }
+            }
+
+            // Sync each real order into payments
+            foreach ($realOrders as $order) {
+                $exists = false;
+                if (in_array('order_number', $columns) && !empty($order->order_number)) {
+                    $exists = Payment::where('order_number', $order->order_number)->exists();
+                }
+                if (!$exists && in_array('order_id', $columns) && !empty($order->id)) {
+                    $exists = Payment::where('order_id', $order->id)->exists();
+                }
+
+                if (!$exists) {
+                    $maxPayNum++;
+                    $payCode = sprintf('PAY-%03d', $maxPayNum);
+
+                    $insertData = [];
+                    if (in_array('payment_id', $columns)) {
+                        $isNumericPk = false;
+                        try {
+                            $colDetails = DB::select("SHOW FULL COLUMNS FROM payments WHERE Field = 'payment_id'");
+                            if (!empty($colDetails) && str_starts_with(strtolower($colDetails[0]->Type ?? ''), 'int')) {
+                                $isNumericPk = true;
+                            }
+                        } catch (\Throwable $e) {}
+                        $insertData['payment_id'] = $isNumericPk ? $maxPayNum : $payCode;
+                    }
+
+                    if (in_array('order_number', $columns)) $insertData['order_number'] = $order->order_number;
+                    if (in_array('order_id', $columns)) $insertData['order_id'] = $order->id;
+                    if (in_array('customer_name', $columns)) $insertData['customer_name'] = $order->customer_name;
+                    if (in_array('customer_id', $columns)) $insertData['customer_id'] = $order->customer_id ?? 1;
+                    if (in_array('customer_initials', $columns)) $insertData['customer_initials'] = $this->makeInitials($order->customer_name);
+                    if (in_array('avatar_color', $columns)) $insertData['avatar_color'] = $this->pickAvatarColor($order->customer_name);
+                    if (in_array('payment_method', $columns)) $insertData['payment_method'] = 'Cash';
+                    if (in_array('method', $columns)) $insertData['method'] = 'Cash';
+
+                    $stUpper = (strtolower((string)$order->status) === 'completed') ? 'COMPLETED' : 'PENDING';
+                    if (in_array('status', $columns)) $insertData['status'] = $stUpper;
+                    if (in_array('payment_status', $columns)) $insertData['payment_status'] = ($stUpper === 'COMPLETED') ? 'Paid' : 'Pending';
+
+                    $payDate = $order->order_date ? date('Y-m-d H:i:s', strtotime($order->order_date)) : now();
+                    if (in_array('payment_date', $columns)) $insertData['payment_date'] = $payDate;
+                    if (in_array('reference_no', $columns)) $insertData['reference_no'] = 'TRX-' . rand(10000, 99999);
+                    if (in_array('notes', $columns)) $insertData['notes'] = $order->notes;
+                    if (in_array('created_at', $columns)) $insertData['created_at'] = now();
+                    if (in_array('updated_at', $columns)) $insertData['updated_at'] = now();
+
+                    if ($amtCol && in_array($amtCol, $columns)) {
+                        $insertData[$amtCol] = (float)($order->total_price ?? 0.00);
+                    }
+
+                    try {
+                        DB::table('payments')->insert($insertData);
+                    } catch (\Throwable $ie) {
+                        Log::warning('syncOrdersToPayments insert warning: ' . $ie->getMessage());
+                    }
+                }
+            }
+        } catch (\Throwable $e) {
+            Log::warning('syncOrdersToPayments warning: ' . $e->getMessage());
+        }
+    }
+
+    /**
      * Retrieve current payments list from Database.
      */
     private function getAllPayments(): array
     {
         try {
             session()->forget('payment_transactions');
+            $this->syncOrdersToPayments();
             if (Schema::hasTable('payments')) {
                 $columns = Schema::getColumnListing('payments');
                 $amtCol = $this->resolveAmountColumn($columns);

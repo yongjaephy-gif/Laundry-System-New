@@ -1,6 +1,6 @@
 @extends('layouts.navbar')
 
-@section('title', 'Settings - Laundry 6 Plus')
+@section('title', 'Settings')
 
 @section('content')
 <div class="space-y-6 w-full mx-auto">
@@ -459,8 +459,10 @@
                         <i class="fa-solid fa-circle-info text-blue-600 text-sm mt-0.5"></i>
                         <div>
                             <h3 class="text-xs font-bold text-gray-900 leading-tight">Last Backup</h3>
-                            <p class="text-xs text-gray-600 mt-0.5">{{ $settings['last_backup_date'] ?? '01 May 2024 10:30 AM' }}</p>
-                            <p class="text-[11px] text-gray-400">(By {{ $settings['last_backup_by'] ?? 'Admin' }})</p>
+                            <p class="text-xs text-gray-600 mt-0.5">{{ $settings['last_backup_date'] ?? 'Never' }}</p>
+                            @if(!empty($settings['last_backup_by']) && $settings['last_backup_by'] !== 'None')
+                                <p class="text-[11px] text-gray-400">(By {{ $settings['last_backup_by'] }})</p>
+                            @endif
                         </div>
                     </div>
 
@@ -488,9 +490,9 @@
                     <div class="divide-y divide-gray-50 text-[11px]" id="backupsListContainer">
                         @forelse($backups as $b)
                             <div class="flex items-center justify-between py-2 text-gray-700 hover:bg-gray-50/50 rounded-lg px-1 transition">
-                                <span class="w-2/5 text-gray-600 font-medium whitespace-nowrap">{{ $b['date'] ?? '01 May 2024 10:30 AM' }}</span>
+                                <span class="w-2/5 text-gray-600 font-medium whitespace-nowrap">{{ $b['date'] ?? '' }}</span>
                                 <span class="w-2/5 text-gray-800 font-medium truncate" title="{{ $b['filename'] }}">{{ $b['filename'] }}</span>
-                                <span class="w-1/6 text-right text-gray-500">{{ $b['filesize'] ?? '24.6 MB' }}</span>
+                                <span class="w-1/6 text-right text-gray-500">{{ $b['filesize'] ?? '' }}</span>
                                 <div class="w-10 text-right">
                                     <a 
                                         href="{{ route('settings.download-backup', ['filename' => $b['filename']]) }}" 
@@ -555,7 +557,7 @@
                         >
                             <option value="">Select a backup file</option>
                             @foreach($backups as $b)
-                                <option value="{{ $b['filename'] }}" selected>
+                                <option value="{{ $b['filename'] }}" {{ $loop->first ? 'selected' : '' }}>
                                     {{ $b['filename'] }} ({{ $b['filesize'] }})
                                 </option>
                             @endforeach

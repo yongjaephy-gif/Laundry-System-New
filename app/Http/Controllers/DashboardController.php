@@ -449,17 +449,29 @@ class DashboardController extends Controller
         $roleName = ucfirst(strtolower($role));
         $isDemo = $this->isDemoSwitcherEnabled();
 
+        // check if the role is valid
         if (!isset($this->roles[$roleName])) {
             return redirect()->route('dashboard')->with('error', 'Invalid role selected.');
         }
 
-        if (!$isDemo && Auth::check() && !$this->userHasRole(Auth::user(), $roleName)) {
-            abort(403, 'You do not have permission to switch to this role.');
+        // // check if the user has permission to switch to this role
+        // if (!$isDemo && Auth::check() && !$this->userHasRole(Auth::user(), $roleName)) {
+        //     abort(403, 'You do not have permission to switch to this role.');
+        // }
+
+        // If the requested role is already active, just redirect to dashboard
+        if (session('active_role') === $roleName) {
+            return redirect()->route('dashboard');
         }
+
+        // Log out the user to clear session and regenerate token
+        Auth::logout();
+        $request->session()->invalidate();
+        $request->session()->regenerateToken();
 
         session(['active_role' => $roleName]);
 
-        return redirect()->route('dashboard', ['role' => $roleName])
-            ->with('success', "Switched view to {$roleName} dashboard.");
+        return redirect()->route('login', ['role' => $roleName])
+            ->with('success', "Please Login  {$roleName}!");
     }
 }

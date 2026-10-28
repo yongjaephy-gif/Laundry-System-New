@@ -5,382 +5,250 @@ namespace App\Http\Controllers;
 use App\Models\Machine;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Schema;
-use Illuminate\Support\Facades\Storage;
-use Illuminate\Pagination\LengthAwarePaginator;
+use Illuminate\Support\Facades\Log;
 
 class MachineController extends Controller
 {
     /**
-     * Official 12 baseline machines matching the teacher's screenshot.
+     * Ensure all necessary columns exist on the machines table.
      */
-    private function getDefaultMachines(): array
+    protected function ensureTableStructure(): void
     {
-        return [
-            [
-                'id' => 1,
-                'machine_id' => 'WM-001',
-                'name' => 'Washer 1',
-                'type' => 'Front Load',
-                'capacity' => '10',
-                'model' => 'LG WD-10',
-                'location' => 'Laundry Room 1',
-                'status' => 'In Use',
-                'last_maintenance' => '2025-09-12',
-                'next_maintenance' => '2025-10-12',
-                'maintenance_history' => [
-                    ['date' => '2025-09-12', 'type' => 'Routine Check', 'note' => 'Normal'],
-                    ['date' => '2025-08-10', 'type' => 'Cleaning', 'note' => 'Cleaned filter'],
-                    ['date' => '2025-07-05', 'type' => 'Repair', 'note' => 'Replaced belt'],
-                ],
-                'notes' => 'Heavy duty front load commercial washing unit.',
-            ],
-            [
-                'id' => 2,
-                'machine_id' => 'WM-002',
-                'name' => 'Washer 2',
-                'type' => 'Front Load',
-                'capacity' => '10',
-                'model' => 'LG WD-10',
-                'location' => 'Laundry Room 1',
-                'status' => 'Available',
-                'last_maintenance' => '2025-09-10',
-                'next_maintenance' => '2025-10-10',
-                'maintenance_history' => [
-                    ['date' => '2025-09-10', 'type' => 'Routine Check', 'note' => 'Normal'],
-                    ['date' => '2025-08-01', 'type' => 'Cleaning', 'note' => 'Drum sanitization'],
-                ],
-                'notes' => 'Standard daily commercial washer.',
-            ],
-            [
-                'id' => 3,
-                'machine_id' => 'WM-003',
-                'name' => 'Washer 3',
-                'type' => 'Front Load',
-                'capacity' => '15',
-                'model' => 'Samsung WF-15',
-                'location' => 'Laundry Room 2',
-                'status' => 'Available',
-                'last_maintenance' => '2025-09-08',
-                'next_maintenance' => '2025-10-08',
-                'maintenance_history' => [
-                    ['date' => '2025-09-08', 'type' => 'Routine Check', 'note' => 'Normal'],
-                    ['date' => '2025-07-15', 'type' => 'Inspection', 'note' => 'Water inlet checked'],
-                ],
-                'notes' => 'Large capacity washing machine for bedsheets and blankets.',
-            ],
-            [
-                'id' => 4,
-                'machine_id' => 'WM-004',
-                'name' => 'Washer 4',
-                'type' => 'Front Load',
-                'capacity' => '15',
-                'model' => 'Samsung WF-15',
-                'location' => 'Laundry Room 2',
-                'status' => 'In Use',
-                'last_maintenance' => '2025-09-13',
-                'next_maintenance' => '2025-10-13',
-                'maintenance_history' => [
-                    ['date' => '2025-09-13', 'type' => 'Routine Check', 'note' => 'Normal'],
-                ],
-                'notes' => 'Running express wash cycle.',
-            ],
-            [
-                'id' => 5,
-                'machine_id' => 'WM-005',
-                'name' => 'Washer 5',
-                'type' => 'Top Load',
-                'capacity' => '20',
-                'model' => 'Whirlpool Heavy',
-                'location' => 'Main Laundry Bay',
-                'status' => 'Available',
-                'last_maintenance' => '2025-09-09',
-                'next_maintenance' => '2025-10-09',
-                'maintenance_history' => [
-                    ['date' => '2025-09-09', 'type' => 'Routine Check', 'note' => 'Normal'],
-                    ['date' => '2025-07-20', 'type' => 'Cleaning', 'note' => 'Agitator cleaned'],
-                ],
-                'notes' => 'Industrial bulk washing machine.',
-            ],
-            [
-                'id' => 6,
-                'machine_id' => 'WM-006',
-                'name' => 'Dryer 1',
-                'type' => 'Dryer',
-                'capacity' => '15',
-                'model' => 'Electrolux Dry',
-                'location' => 'Drying Zone A',
-                'status' => 'In Use',
-                'last_maintenance' => '2025-09-13',
-                'next_maintenance' => '2025-10-13',
-                'maintenance_history' => [
-                    ['date' => '2025-09-13', 'type' => 'Routine Check', 'note' => 'Heating coil tested'],
-                    ['date' => '2025-08-15', 'type' => 'Cleaning', 'note' => 'Lint trap cleared'],
-                ],
-                'notes' => 'Gas-powered high-efficiency tumbling dryer.',
-            ],
-            [
-                'id' => 7,
-                'machine_id' => 'WM-007',
-                'name' => 'Dryer 2',
-                'type' => 'Dryer',
-                'capacity' => '15',
-                'model' => 'Electrolux Dry',
-                'location' => 'Drying Zone A',
-                'status' => 'Available',
-                'last_maintenance' => '2025-09-11',
-                'next_maintenance' => '2025-10-11',
-                'maintenance_history' => [
-                    ['date' => '2025-09-11', 'type' => 'Routine Check', 'note' => 'Normal'],
-                ],
-                'notes' => 'Commercial dryer ready for cycle.',
-            ],
-            [
-                'id' => 8,
-                'machine_id' => 'WM-008',
-                'name' => 'Dryer 3',
-                'type' => 'Dryer',
-                'capacity' => '20',
-                'model' => 'SpeedQueen Pro',
-                'location' => 'Drying Zone B',
-                'status' => 'Under Maintenance',
-                'last_maintenance' => '2025-09-05',
-                'next_maintenance' => '2025-09-20',
-                'maintenance_history' => [
-                    ['date' => '2025-09-05', 'type' => 'Repair', 'note' => 'Drum bearing replacement scheduled'],
-                    ['date' => '2025-08-01', 'type' => 'Inspection', 'note' => 'Bearing noise detected'],
-                ],
-                'notes' => 'Awaiting replacement parts from technician.',
-            ],
-            [
-                'id' => 9,
-                'machine_id' => 'WM-009',
-                'name' => 'Ironing Machine 1',
-                'type' => 'Ironing',
-                'capacity' => '-',
-                'model' => 'Rowenta ProPress',
-                'location' => 'Finishing Area',
-                'status' => 'Available',
-                'last_maintenance' => '2025-09-10',
-                'next_maintenance' => '2025-10-10',
-                'maintenance_history' => [
-                    ['date' => '2025-09-10', 'type' => 'Routine Check', 'note' => 'Plate temperature verified'],
-                ],
-                'notes' => 'Roller iron press for bed sheets and shirts.',
-            ],
-            [
-                'id' => 10,
-                'machine_id' => 'WM-010',
-                'name' => 'Ironing Machine 2',
-                'type' => 'Ironing',
-                'capacity' => '-',
-                'model' => 'Rowenta ProPress',
-                'location' => 'Finishing Area',
-                'status' => 'Available',
-                'last_maintenance' => '2025-09-09',
-                'next_maintenance' => '2025-10-09',
-                'maintenance_history' => [
-                    ['date' => '2025-09-09', 'type' => 'Routine Check', 'note' => 'Steam nozzle descaled'],
-                ],
-                'notes' => 'Secondary ironing press station.',
-            ],
-            [
-                'id' => 11,
-                'machine_id' => 'WM-011',
-                'name' => 'Ironing Machine 3',
-                'type' => 'Ironing',
-                'capacity' => '-',
-                'model' => 'Rowenta ProPress',
-                'location' => 'Finishing Area',
-                'status' => 'Available',
-                'last_maintenance' => '2025-09-13',
-                'next_maintenance' => '2025-10-13',
-                'maintenance_history' => [
-                    ['date' => '2025-09-13', 'type' => 'Routine Check', 'note' => 'Normal'],
-                ],
-                'notes' => 'Finishing garment station.',
-            ],
-            [
-                'id' => 12,
-                'machine_id' => 'WM-012',
-                'name' => 'Boiler',
-                'type' => 'Steam',
-                'capacity' => '-',
-                'model' => 'Karcher SteamMax',
-                'location' => 'Utility Room',
-                'status' => 'Available',
-                'last_maintenance' => '2025-09-08',
-                'next_maintenance' => '2025-10-08',
-                'maintenance_history' => [
-                    ['date' => '2025-09-08', 'type' => 'Safety Inspection', 'note' => 'Pressure valve certified'],
-                    ['date' => '2025-07-10', 'type' => 'Routine Check', 'note' => 'Descaling completed'],
-                ],
-                'notes' => 'Central steam generator boiler unit.',
-            ],
-        ];
+        try {
+            if (!Schema::hasTable('machines')) {
+                return;
+            }
+
+            $cols = Schema::getColumnListing('machines');
+
+            Schema::table('machines', function (\Illuminate\Database\Schema\Blueprint $table) use (&$cols) {
+                if (!in_array('name', $cols) && !in_array('machine_name', $cols)) {
+                    $table->string('name')->nullable();
+                }
+                if (!in_array('type', $cols) && !in_array('machine_type', $cols)) {
+                    $table->string('type', 100)->nullable();
+                }
+                if (!in_array('capacity', $cols)) {
+                    $table->string('capacity', 50)->nullable()->default('-');
+                }
+                if (!in_array('model', $cols)) {
+                    $table->string('model', 100)->nullable();
+                }
+                if (!in_array('location', $cols)) {
+                    $table->string('location', 100)->nullable()->default('Laundry Room 1');
+                }
+                if (!in_array('status', $cols)) {
+                    $table->string('status', 50)->default('Available');
+                }
+                if (!in_array('last_maintenance', $cols)) {
+                    $table->string('last_maintenance', 50)->nullable();
+                }
+                if (!in_array('next_maintenance', $cols)) {
+                    $table->string('next_maintenance', 50)->nullable();
+                }
+                if (!in_array('maintenance_history', $cols)) {
+                    $table->json('maintenance_history')->nullable();
+                }
+                if (!in_array('notes', $cols)) {
+                    $table->text('notes')->nullable();
+                }
+            });
+        } catch (\Throwable $e) {
+            Log::warning('ensureTableStructure warning: ' . $e->getMessage());
+        }
     }
 
     /**
-     * Load machines from Database, JSON Storage, or Session.
+     * Safely find machine by id or machine_id without column not found errors.
      */
-    private function loadData(): array
+    protected function findMachine($id)
     {
-        // 1. Try MySQL Database
+        if (is_object($id)) {
+            $id = $id->machine_id ?? ($id->id ?? 1);
+        }
+
         try {
-            if (Schema::hasTable('machines')) {
-                $count = Machine::count();
-                if ($count > 0) {
-                    return Machine::orderBy('id', 'asc')->get()->map(function ($item) {
-                        return (object) [
-                            'id' => $item->id,
-                            'machine_id' => $item->machine_id,
-                            'name' => $item->name,
-                            'type' => $item->type,
-                            'capacity' => $item->capacity ?? '-',
-                            'model' => $item->model ?? 'Standard Model',
-                            'location' => $item->location ?? 'Laundry Room 1',
-                            'status' => $item->status,
-                            'last_maintenance' => $item->last_maintenance ?? '2025-09-10',
-                            'next_maintenance' => $item->next_maintenance ?? '2025-10-10',
-                            'maintenance_history' => is_array($item->maintenance_history) ? $item->maintenance_history : json_decode($item->maintenance_history ?? '[]', true),
-                            'notes' => $item->notes ?? '',
-                        ];
-                    })->all();
-                } else {
-                    // Seed initial 12 items into DB
-                    $defaults = $this->getDefaultMachines();
-                    foreach ($defaults as $d) {
-                        Machine::create($d);
-                    }
-                    return $this->loadData();
+            $cols = Schema::getColumnListing('machines');
+            $query = Machine::query();
+
+            if (in_array('id', $cols) && in_array('machine_id', $cols)) {
+                $query->where('id', $id)->orWhere('machine_id', $id);
+            } elseif (in_array('machine_id', $cols)) {
+                $query->where('machine_id', $id);
+            } elseif (in_array('id', $cols)) {
+                $query->where('id', $id);
+            }
+
+            return $query->first();
+        } catch (\Throwable $e) {
+            return null;
+        }
+    }
+
+    /**
+     * Map request input to matching table columns.
+     */
+    protected function buildMachinePayload(Request $request, string $machineId, ?array $history = null): array
+    {
+        $cols = Schema::getColumnListing('machines');
+        $payload = [];
+
+        $nowDate = $request->input('last_maintenance', date('Y-m-d')) ?: date('Y-m-d');
+        $nextDate = $request->input('next_maintenance', date('Y-m-d', strtotime('+30 days'))) ?: date('Y-m-d', strtotime('+30 days'));
+
+        // Detect if machine_id in MySQL is integer or auto_increment
+        $isMachineIdInt = false;
+        $isAutoIncrement = false;
+        try {
+            $colInfo = \Illuminate\Support\Facades\DB::select("SHOW COLUMNS FROM machines WHERE Field = 'machine_id'");
+            if (!empty($colInfo)) {
+                $colType = strtolower($colInfo[0]->Type ?? '');
+                $extra = strtolower($colInfo[0]->Extra ?? '');
+                if (str_contains($colType, 'int')) {
+                    $isMachineIdInt = true;
+                }
+                if (str_contains($extra, 'auto_increment')) {
+                    $isAutoIncrement = true;
                 }
             }
-        } catch (\Throwable $e) {
-            // Fall back to file/session
-        }
+        } catch (\Throwable $e) {}
 
-        // 2. Try JSON storage file
-        if (Storage::exists('machines.json')) {
-            try {
-                $json = Storage::get('machines.json');
-                $decoded = json_decode($json, true);
-                if (is_array($decoded) && count($decoded) > 0) {
-                    return array_map(function ($d) {
-                        return (object) $d;
-                    }, $decoded);
+        if (in_array('machine_id', $cols)) {
+            if ($isAutoIncrement) {
+                // If machine_id is an AUTO_INCREMENT column, omit it so MySQL assigns it automatically
+            } elseif ($isMachineIdInt) {
+                // If it's an INT column (not auto_increment), store numeric value
+                $numId = intval(preg_replace('/\D/', '', $machineId));
+                if ($numId <= 0) {
+                    $numId = (int) (Machine::max('machine_id') ?? 0) + 1;
                 }
-            } catch (\Throwable $e) {
-                // Continue to session
+                $payload['machine_id'] = $numId;
+            } else {
+                // Standard VARCHAR machine_id (WM-001, etc.)
+                $payload['machine_id'] = $machineId;
             }
         }
 
-        // 3. Try Session
-        if (session()->has('mock_machines')) {
-            $sess = session('mock_machines');
-            if (is_array($sess) && count($sess) > 0) {
-                return array_map(function ($d) {
-                    return is_object($d) ? $d : (object) $d;
-                }, $sess);
-            }
-        }
+        $machineName = trim($request->input('name') ?: $request->input('machine_name', ''));
+        if (in_array('name', $cols)) $payload['name'] = $machineName;
+        if (in_array('machine_name', $cols)) $payload['machine_name'] = $machineName;
 
-        // 4. Default baseline items
-        $defaults = $this->getDefaultMachines();
-        Storage::put('machines.json', json_encode($defaults, JSON_PRETTY_PRINT));
-        session(['mock_machines' => $defaults]);
+        $machineType = trim($request->input('type') ?: $request->input('machine_type', 'Front Load'));
+        if (in_array('type', $cols)) $payload['type'] = $machineType;
+        if (in_array('machine_type', $cols)) $payload['machine_type'] = $machineType;
 
-        return array_map(function ($d) {
-            return (object) $d;
-        }, $defaults);
+        if (in_array('capacity', $cols)) $payload['capacity'] = trim($request->input('capacity', '-')) ?: '-';
+        if (in_array('model', $cols)) $payload['model'] = trim($request->input('model', 'Standard Model')) ?: 'Standard Model';
+        if (in_array('location', $cols)) $payload['location'] = trim($request->input('location', 'Laundry Room 1')) ?: 'Laundry Room 1';
+
+        $status = in_array($request->status, ['Available', 'In Use', 'Under Maintenance']) ? $request->status : 'Available';
+        if (in_array('status', $cols)) $payload['status'] = $status;
+
+        if (in_array('last_maintenance', $cols)) $payload['last_maintenance'] = $nowDate;
+        if (in_array('next_maintenance', $cols)) $payload['next_maintenance'] = $nextDate;
+        if (in_array('maintenance_history', $cols) && $history !== null) $payload['maintenance_history'] = $history;
+        if (in_array('notes', $cols)) $payload['notes'] = trim($request->input('notes', 'Registered laundry unit.'));
+
+        return $payload;
     }
 
     /**
-     * Persist machines list across Database, JSON, and Session.
-     */
-    private function saveData(array $items): void
-    {
-        $arrayData = array_map(function ($item) {
-            return (array) $item;
-        }, $items);
-
-        // Update JSON file
-        try {
-            Storage::put('machines.json', json_encode($arrayData, JSON_PRETTY_PRINT));
-        } catch (\Throwable $e) {
-            // Ignore file error
-        }
-
-        // Update Session
-        session(['mock_machines' => $arrayData]);
-    }
-
-    /**
-     * Display a listing of the resource.
+     * Display a listing of machines from MySQL Database.
      */
     public function index(Request $request)
     {
+        $this->ensureTableStructure();
+
         $search = trim($request->input('search', ''));
         $statusFilter = trim($request->input('status', ''));
         $typeFilter = trim($request->input('type', ''));
 
-        $allItems = $this->loadData();
+        $query = Machine::query();
+        $cols = Schema::getColumnListing('machines');
 
-        // Calculate global summary stats
+        // 1. Search Filter
+        if (!empty($search)) {
+            $query->where(function ($q) use ($search, $cols) {
+                $hasWhere = false;
+                if (in_array('name', $cols)) {
+                    $q->where('name', 'like', "%{$search}%");
+                    $hasWhere = true;
+                }
+                if (in_array('machine_name', $cols)) {
+                    $hasWhere ? $q->orWhere('machine_name', 'like', "%{$search}%") : $q->where('machine_name', 'like', "%{$search}%");
+                    $hasWhere = true;
+                }
+                if (in_array('machine_id', $cols)) {
+                    $hasWhere ? $q->orWhere('machine_id', 'like', "%{$search}%") : $q->where('machine_id', 'like', "%{$search}%");
+                    $hasWhere = true;
+                }
+                if (in_array('model', $cols)) {
+                    $hasWhere ? $q->orWhere('model', 'like', "%{$search}%") : $q->where('model', 'like', "%{$search}%");
+                    $hasWhere = true;
+                }
+                if (in_array('type', $cols)) {
+                    $hasWhere ? $q->orWhere('type', 'like', "%{$search}%") : $q->where('type', 'like', "%{$search}%");
+                    $hasWhere = true;
+                }
+                if (in_array('location', $cols)) {
+                    $hasWhere ? $q->orWhere('location', 'like', "%{$search}%") : $q->where('location', 'like', "%{$search}%");
+                }
+            });
+        }
+
+        // 2. Status Filter
+        if (!empty($statusFilter) && $statusFilter !== 'All Status') {
+            if (in_array('status', $cols)) {
+                $query->where('status', $statusFilter);
+            }
+        }
+
+        // 3. Type Filter
+        if (!empty($typeFilter) && $typeFilter !== 'All Types') {
+            if (in_array('type', $cols)) {
+                $query->where('type', $typeFilter);
+            } elseif (in_array('machine_type', $cols)) {
+                $query->where('machine_type', $typeFilter);
+            }
+        }
+
+        // Safe order by primary key without hardcoding 'id'
+        $pk = in_array('machine_id', $cols) ? 'machine_id' : (in_array('id', $cols) ? 'id' : null);
+        if ($pk) {
+            $query->orderBy($pk, 'asc');
+        }
+
+        $items = $query->get();
+
+        // Real Database Stats
         $stats = [
-            'total' => count($allItems),
-            'available' => count(array_filter($allItems, fn($i) => ($i->status ?? '') === 'Available')),
-            'in_use' => count(array_filter($allItems, fn($i) => ($i->status ?? '') === 'In Use')),
-            'maintenance' => count(array_filter($allItems, fn($i) => ($i->status ?? '') === 'Under Maintenance')),
+            'total' => Machine::count(),
+            'available' => Machine::where('status', 'Available')->count(),
+            'in_use' => Machine::where('status', 'In Use')->count(),
+            'maintenance' => Machine::where('status', 'Under Maintenance')->count(),
         ];
 
-        // Apply filtering
-        $filteredItems = array_filter($allItems, function ($item) use ($search, $statusFilter, $typeFilter) {
-            if ($search !== '') {
-                $term = strtolower($search);
-                $name = strtolower($item->name ?? '');
-                $mid = strtolower($item->machine_id ?? '');
-                $model = strtolower($item->model ?? '');
-                $type = strtolower($item->type ?? '');
-                $loc = strtolower($item->location ?? '');
-
-                if (!str_contains($name, $term) && !str_contains($mid, $term) && !str_contains($model, $term) && !str_contains($type, $term) && !str_contains($loc, $term)) {
-                    return false;
-                }
-            }
-
-            if ($statusFilter !== '' && $statusFilter !== 'All Status') {
-                if (($item->status ?? '') !== $statusFilter) {
-                    return false;
-                }
-            }
-
-            if ($typeFilter !== '' && $typeFilter !== 'All Types') {
-                if (($item->type ?? '') !== $typeFilter) {
-                    return false;
-                }
-            }
-
-            return true;
-        });
-
-        // Re-index array
-        $filteredItems = array_values($filteredItems);
-
-        // Unique types for dropdown
-        $types = array_values(array_unique(array_filter(array_map(fn($i) => $i->type ?? null, $allItems))));
+        // Machine types for filter dropdown
+        $dbTypes = [];
+        if (in_array('type', $cols)) {
+            $dbTypes = Machine::select('type')->distinct()->whereNotNull('type')->where('type', '!=', '')->pluck('type')->toArray();
+        }
+        $defaultTypes = ['Dryer', 'Front Load', 'Ironing', 'Steam', 'Top Load'];
+        $types = array_values(array_unique(array_merge($defaultTypes, $dbTypes)));
         sort($types);
 
         // AJAX JSON response
         if ($request->ajax() || $request->wantsJson()) {
             return response()->json([
                 'success' => true,
-                'items' => $filteredItems,
+                'items' => $items,
                 'stats' => $stats,
-                'count' => count($filteredItems),
+                'count' => count($items),
             ]);
         }
 
         return view('pages.machine', [
-            'machines' => $filteredItems,
+            'machines' => $items,
             'stats' => $stats,
             'types' => $types,
             'search' => $search,
@@ -394,21 +262,13 @@ class MachineController extends Controller
      */
     public function show($id, $optionalId = null)
     {
-        if ($id instanceof \Illuminate\Http\Request) {
+        if ($id instanceof Request) {
             $id = $optionalId ?? $id->route('id') ?? $id->route('machine');
         }
 
-        $allItems = $this->loadData();
-        $found = null;
+        $machine = $this->findMachine($id);
 
-        foreach ($allItems as $item) {
-            if ($item->id == $id || ($item->machine_id ?? '') == $id) {
-                $found = $item;
-                break;
-            }
-        }
-
-        if (!$found) {
+        if (!$machine) {
             return response()->json([
                 'success' => false,
                 'message' => 'Machine not found',
@@ -417,203 +277,188 @@ class MachineController extends Controller
 
         return response()->json([
             'success' => true,
-            'machine' => $found,
+            'machine' => $machine,
         ]);
     }
 
     /**
-     * Store a newly created machine in storage.
+     * Store a newly created machine in MySQL database.
      */
     public function store(Request $request)
     {
+        $this->ensureTableStructure();
+
         $request->validate([
             'name' => 'required|string|max:255',
             'type' => 'required|string|max:100',
+            'capacity' => 'nullable|string|max:50',
+            'model' => 'nullable|string|max:100',
+            'location' => 'nullable|string|max:100',
+            'status' => 'nullable|string|in:Available,In Use,Under Maintenance',
+            'last_maintenance' => 'nullable|string|max:50',
+            'next_maintenance' => 'nullable|string|max:50',
+            'notes' => 'nullable|string|max:1000',
         ]);
-
-        $allItems = $this->loadData();
-
-        // Generate next ID and Machine ID if not provided
-        $maxId = 0;
-        foreach ($allItems as $item) {
-            if ($item->id > $maxId) {
-                $maxId = $item->id;
-            }
-        }
-        $newId = $maxId + 1;
 
         $machineId = trim($request->input('machine_id', ''));
         if (empty($machineId)) {
-            $machineId = sprintf('WM-%03d', $newId);
+            $count = Machine::count();
+            $maxNum = 0;
+            try {
+                $existing = Machine::all();
+                foreach ($existing as $ex) {
+                    $mVal = $ex->getRawOriginal('machine_id') ?? ($ex->getRawOriginal('id') ?? '');
+                    $num = intval(preg_replace('/\D/', '', (string)$mVal));
+                    if ($num > $maxNum) {
+                        $maxNum = $num;
+                    }
+                }
+            } catch (\Throwable $e) {}
+            $nextNum = max($count + 1, $maxNum + 1);
+            $machineId = sprintf('WM-%03d', $nextNum);
         }
 
-        $nowDate = date('Y-m-d');
-        $nextDate = date('Y-m-d', strtotime('+30 days'));
-
-        $newMachine = [
-            'id' => $newId,
-            'machine_id' => $machineId,
-            'name' => trim($request->input('name')),
-            'type' => trim($request->input('type')),
-            'capacity' => trim($request->input('capacity', '-')) ?: '-',
-            'model' => trim($request->input('model', 'Standard Model')) ?: 'Standard Model',
-            'location' => trim($request->input('location', 'Laundry Room 1')) ?: 'Laundry Room 1',
-            'status' => in_array($request->input('status'), ['Available', 'In Use', 'Under Maintenance']) ? $request->input('status') : 'Available',
-            'last_maintenance' => $request->input('last_maintenance', $nowDate) ?: $nowDate,
-            'next_maintenance' => $request->input('next_maintenance', $nextDate) ?: $nextDate,
-            'maintenance_history' => [
-                [
-                    'date' => $nowDate,
-                    'type' => 'Initial Setup',
-                    'note' => 'Machine registered into system',
-                ],
+        $nowDate = $request->input('last_maintenance', date('Y-m-d')) ?: date('Y-m-d');
+        $history = [
+            [
+                'date' => $nowDate,
+                'type' => 'Initial Setup',
+                'note' => 'Machine registered into system',
             ],
-            'notes' => trim($request->input('notes', 'Registered laundry unit.')),
         ];
 
-        // 1. Try DB
+        $payload = $this->buildMachinePayload($request, $machineId, $history);
+        
         try {
-            if (Schema::hasTable('machines')) {
-                Machine::create($newMachine);
-            }
+            $machine = Machine::create($payload);
         } catch (\Throwable $e) {
-            // Ignore DB error and continue to file/session
+            Log::error('Machine registration error: ' . $e->getMessage());
+            if ($request->ajax() || $request->wantsJson()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Failed to register machine: ' . $e->getMessage(),
+                ], 500);
+            }
+            return redirect()->back()->with('error', 'Failed to register machine: ' . $e->getMessage())->withInput();
         }
 
-        // 2. Save in array
-        $allItems[] = (object) $newMachine;
-        $this->saveData($allItems);
+        $displayName = $machine->name ?? ($payload['name'] ?? ($payload['machine_name'] ?? 'Machine'));
+        $displayId = $machine->machine_id ?? $machineId;
 
         if ($request->ajax() || $request->wantsJson()) {
             return response()->json([
                 'success' => true,
-                'message' => "Machine {$machineId} ({$newMachine['name']}) registered successfully!",
-                'machine' => $newMachine,
+                'message' => "Machine {$displayId} ({$displayName}) registered successfully!",
+                'machine' => $machine,
             ]);
         }
 
-        return redirect()->route('machines.index')->with('success', "Machine {$machineId} registered successfully!");
+        return redirect()->route('machines.index')->with('success', "Machine {$displayId} registered successfully!");
     }
 
     /**
-     * Update the specified machine in storage.
+     * Update the specified machine in MySQL database.
      */
     public function update(Request $request, $id)
     {
-        $allItems = $this->loadData();
-        $updatedItem = null;
-        $indexFound = -1;
+        $machine = $this->findMachine($id);
 
-        foreach ($allItems as $idx => $item) {
-            if ($item->id == $id || ($item->machine_id ?? '') == $id) {
-                $indexFound = $idx;
-                $updatedItem = (array) $item;
-                break;
-            }
-        }
-
-        if ($indexFound === -1 || !$updatedItem) {
+        if (!$machine) {
             if ($request->ajax() || $request->wantsJson()) {
                 return response()->json(['success' => false, 'message' => 'Machine not found.'], 404);
             }
             return redirect()->route('machines.index')->with('error', 'Machine not found.');
         }
 
-        $oldStatus = $updatedItem['status'] ?? 'Available';
+        $request->validate([
+            'name' => 'sometimes|required|string|max:255',
+            'type' => 'sometimes|required|string|max:100',
+        ]);
+
+        $oldStatus = $machine->status ?? 'Available';
         $newStatus = $request->input('status', $oldStatus);
 
-        $updatedItem['name'] = trim($request->input('name', $updatedItem['name']));
-        $updatedItem['type'] = trim($request->input('type', $updatedItem['type']));
-        $updatedItem['capacity'] = trim($request->input('capacity', $updatedItem['capacity'] ?? '-')) ?: '-';
-        $updatedItem['model'] = trim($request->input('model', $updatedItem['model'] ?? ''));
-        $updatedItem['location'] = trim($request->input('location', $updatedItem['location'] ?? 'Laundry Room 1'));
-        $updatedItem['status'] = in_array($newStatus, ['Available', 'In Use', 'Under Maintenance']) ? $newStatus : $oldStatus;
-        $updatedItem['last_maintenance'] = $request->input('last_maintenance', $updatedItem['last_maintenance'] ?? date('Y-m-d'));
-        $updatedItem['next_maintenance'] = $request->input('next_maintenance', $updatedItem['next_maintenance'] ?? date('Y-m-d', strtotime('+30 days')));
-        $updatedItem['notes'] = trim($request->input('notes', $updatedItem['notes'] ?? ''));
+        $cols = Schema::getColumnListing('machines');
+        $updates = [];
 
-        // If status changed to Under Maintenance, automatically log it in maintenance history
-        if ($newStatus === 'Under Maintenance' && $oldStatus !== 'Under Maintenance') {
-            $history = is_array($updatedItem['maintenance_history'] ?? null) ? $updatedItem['maintenance_history'] : [];
-            array_unshift($history, [
-                'date' => date('Y-m-d'),
-                'type' => 'Maintenance Scheduled',
-                'note' => 'Status changed to Under Maintenance: ' . ($request->input('notes') ?: 'Routine service required'),
-            ]);
-            $updatedItem['maintenance_history'] = $history;
+        if (in_array('name', $cols)) $updates['name'] = trim($request->input('name', $machine->name));
+        if (in_array('machine_name', $cols)) $updates['machine_name'] = trim($request->input('name', $machine->name));
+
+        if (in_array('type', $cols)) $updates['type'] = trim($request->input('type', $machine->type));
+        if (in_array('machine_type', $cols)) $updates['machine_type'] = trim($request->input('type', $machine->type));
+
+        if (in_array('capacity', $cols)) $updates['capacity'] = trim($request->input('capacity', $machine->capacity ?? '-')) ?: '-';
+        if (in_array('model', $cols)) $updates['model'] = trim($request->input('model', $machine->model ?? ''));
+        if (in_array('location', $cols)) $updates['location'] = trim($request->input('location', $machine->location ?? 'Laundry Room 1'));
+
+        if (in_array('status', $cols)) {
+            $updates['status'] = in_array($newStatus, ['Available', 'In Use', 'Under Maintenance']) ? $newStatus : $oldStatus;
         }
 
-        // If user submitted an extra maintenance log entry
-        if ($request->filled('log_type') && $request->filled('log_note')) {
-            $history = is_array($updatedItem['maintenance_history'] ?? null) ? $updatedItem['maintenance_history'] : [];
-            array_unshift($history, [
-                'date' => $request->input('log_date', date('Y-m-d')),
-                'type' => trim($request->input('log_type')),
-                'note' => trim($request->input('log_note')),
-            ]);
-            $updatedItem['maintenance_history'] = $history;
+        if (in_array('last_maintenance', $cols)) {
+            $updates['last_maintenance'] = $request->input('last_maintenance', $machine->last_maintenance ?? date('Y-m-d'));
+        }
+        if (in_array('next_maintenance', $cols)) {
+            $updates['next_maintenance'] = $request->input('next_maintenance', $machine->next_maintenance ?? date('Y-m-d', strtotime('+30 days')));
+        }
+        if (in_array('notes', $cols)) {
+            $updates['notes'] = trim($request->input('notes', $machine->notes ?? ''));
         }
 
-        // 1. Try DB
-        try {
-            if (Schema::hasTable('machines')) {
-                $dbItem = Machine::where('id', $updatedItem['id'])->orWhere('machine_id', $updatedItem['machine_id'])->first();
-                if ($dbItem) {
-                    $dbItem->update($updatedItem);
-                }
+        if (in_array('maintenance_history', $cols)) {
+            $history = is_array($machine->maintenance_history) ? $machine->maintenance_history : [];
+
+            // If status changed to Under Maintenance, automatically log it in maintenance history
+            if ($newStatus === 'Under Maintenance' && $oldStatus !== 'Under Maintenance') {
+                array_unshift($history, [
+                    'date' => date('Y-m-d'),
+                    'type' => 'Maintenance Scheduled',
+                    'note' => 'Status changed to Under Maintenance: ' . ($request->input('notes') ?: 'Routine service required'),
+                ]);
+                $updates['maintenance_history'] = $history;
             }
-        } catch (\Throwable $e) {
-            // Ignore DB error
+
+            // If user submitted an extra maintenance log entry
+            if ($request->filled('log_type') && $request->filled('log_note')) {
+                array_unshift($history, [
+                    'date' => $request->input('log_date', date('Y-m-d')),
+                    'type' => trim($request->input('log_type')),
+                    'note' => trim($request->input('log_note')),
+                ]);
+                $updates['maintenance_history'] = $history;
+            }
         }
 
-        // 2. Save
-        $allItems[$indexFound] = (object) $updatedItem;
-        $this->saveData($allItems);
+        $machine->update($updates);
 
         if ($request->ajax() || $request->wantsJson()) {
             return response()->json([
                 'success' => true,
-                'message' => "Machine {$updatedItem['machine_id']} updated successfully!",
-                'machine' => $updatedItem,
+                'message' => "Machine {$machine->machine_id} updated successfully in database!",
+                'machine' => $machine,
             ]);
         }
 
-        return redirect()->route('machines.index')->with('success', "Machine {$updatedItem['machine_id']} updated successfully!");
+        return redirect()->route('machines.index')->with('success', "Machine {$machine->machine_id} updated successfully!");
     }
 
     /**
-     * Remove the specified machine from storage.
+     * Remove the specified machine from MySQL database.
      */
     public function destroy(Request $request, $id)
     {
-        $allItems = $this->loadData();
+        $machine = $this->findMachine($id);
+
         $deletedName = '';
-        $newItems = [];
-
-        foreach ($allItems as $item) {
-            if ($item->id == $id || ($item->machine_id ?? '') == $id) {
-                $deletedName = ($item->machine_id ?? '') . ' - ' . ($item->name ?? '');
-                continue;
-            }
-            $newItems[] = $item;
+        if ($machine) {
+            $deletedName = "{$machine->machine_id} - {$machine->name}";
+            $machine->delete();
         }
-
-        // 1. Try DB
-        try {
-            if (Schema::hasTable('machines')) {
-                Machine::where('id', $id)->orWhere('machine_id', $id)->delete();
-            }
-        } catch (\Throwable $e) {
-            // Ignore DB error
-        }
-
-        // 2. Save
-        $this->saveData($newItems);
 
         if ($request->ajax() || $request->wantsJson()) {
             return response()->json([
                 'success' => true,
-                'message' => "Machine {$deletedName} deleted successfully!",
+                'message' => "Machine {$deletedName} deleted successfully from database!",
             ]);
         }
 
@@ -630,29 +475,15 @@ class MachineController extends Controller
             return response()->json(['success' => false, 'message' => 'Invalid status'], 422);
         }
 
-        $allItems = $this->loadData();
-        $found = null;
+        $machine = $this->findMachine($id);
 
-        foreach ($allItems as $item) {
-            if ($item->id == $id || ($item->machine_id ?? '') == $id) {
-                $item->status = $status;
-                $found = $item;
-                break;
-            }
-        }
-
-        if ($found) {
-            $this->saveData($allItems);
-            try {
-                if (Schema::hasTable('machines')) {
-                    Machine::where('id', $id)->orWhere('machine_id', $id)->update(['status' => $status]);
-                }
-            } catch (\Throwable $e) {}
+        if ($machine) {
+            $machine->update(['status' => $status]);
 
             return response()->json([
                 'success' => true,
-                'message' => "Machine status updated to {$status}",
-                'machine' => $found,
+                'message' => "Machine status updated to {$status} in database",
+                'machine' => $machine,
             ]);
         }
 
@@ -660,29 +491,25 @@ class MachineController extends Controller
     }
 
     /**
-     * Reset machines to the original 12 baseline units.
+     * Clear all machines in MySQL database.
      */
     public function reset(Request $request)
     {
-        $defaults = $this->getDefaultMachines();
-        $this->saveData($defaults);
-
         try {
             if (Schema::hasTable('machines')) {
                 Machine::truncate();
-                foreach ($defaults as $d) {
-                    Machine::create($d);
-                }
             }
-        } catch (\Throwable $e) {}
+        } catch (\Throwable $e) {
+            Log::error('Reset machines error: ' . $e->getMessage());
+        }
 
         if ($request->ajax() || $request->wantsJson()) {
             return response()->json([
                 'success' => true,
-                'message' => 'Machines reset to official 12 units successfully!',
+                'message' => 'Machines table has been cleared in database.',
             ]);
         }
 
-        return redirect()->route('machines.index')->with('success', 'Machines reset to official 12 units successfully!');
+        return redirect()->route('machines.index')->with('success', 'Machines table has been cleared in database.');
     }
 }

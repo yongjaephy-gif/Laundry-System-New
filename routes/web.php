@@ -115,7 +115,7 @@ Route::middleware('auth')->group(function () {
     Route::post('/pickup-and-delivery', [PickupAndDeliveryController::class, 'store'])->name('pickup-and-delivery.store')->middleware('check.role:admin,receptionist,delivery');
     Route::post('/pickup-and-delivery/schedule', [PickupAndDeliveryController::class, 'scheduleTask'])->name('pickup-and-delivery.schedule')->middleware('check.role:admin,receptionist,delivery');
     Route::get('/pickup-and-delivery/{id}', [PickupAndDeliveryController::class, 'show'])->name('pickup-and-delivery.show')->middleware('check.role:admin,receptionist,delivery');
-    Route::put('/pickup-and-delivery/{id}', [PickupAndDeliveryController::class, 'update'])->name('pickup-and-delivery.update')->middleware('check.role:admin,receptionist,delivery');
+    Route::match(['put', 'post'], '/pickup-and-delivery/{id}', [PickupAndDeliveryController::class, 'update'])->name('pickup-and-delivery.update')->middleware('check.role:admin,receptionist,delivery');
     Route::post('/pickup-and-delivery/{id}/update', [PickupAndDeliveryController::class, 'update'])->name('pickup-and-delivery.update-post')->middleware('check.role:admin,receptionist,delivery');
     Route::post('/pickup-and-delivery/assign/{id}', [PickupAndDeliveryController::class, 'assignStaff'])->name('pickup-and-delivery.assign')->middleware('check.role:admin,receptionist,delivery');
     Route::post('/pickup-and-delivery/{id}/status', [PickupAndDeliveryController::class, 'updateStatus'])->name('pickup-and-delivery.status')->middleware('check.role:admin,receptionist,delivery');

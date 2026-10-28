@@ -11,12 +11,17 @@ class User extends Authenticatable
 {
     use HasApiTokens, HasFactory, Notifiable;
 
-    protected static $resolvedPrimaryKey = null;
+    /**
+     * @var string|null
+     */
+    protected static ?string $resolvedPrimaryKey = null;
 
     /**
      * Get the primary key for the model dynamically.
+     *
+     * @return string
      */
-    public function getKeyName()
+    public function getKeyName(): string
     {
         if (static::$resolvedPrimaryKey !== null) {
             return static::$resolvedPrimaryKey;
@@ -104,9 +109,15 @@ class User extends Authenticatable
 
     /**
      * Mutator for password to ensure hashing.
+     *
+     * @param string|null $value
+     * @return void
      */
-    public function setPasswordAttribute($value)
+    public function setPasswordAttribute(?string $value): void
     {
+        if ($value === null) {
+            return;
+        }
         $hash = \Illuminate\Support\Facades\Hash::needsRehash($value)
             ? \Illuminate\Support\Facades\Hash::make($value)
             : $value;
@@ -179,8 +190,17 @@ class User extends Authenticatable
         return $this->getCurrentRole() === 'delivery';
     }
 
-    public function hasRole($roleName)
+    /**
+     * Check if user has a specific role.
+     *
+     * @param string|null $roleName
+     * @return bool
+     */
+    public function hasRole(?string $roleName): bool
     {
+        if ($roleName === null) {
+            return false;
+        }
         $current = strtolower($this->getCurrentRole());
         $target = strtolower($roleName);
         // ការពារករណីសរសេរច្រឡំ receptionist / recieptionist

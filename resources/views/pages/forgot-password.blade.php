@@ -1,5 +1,7 @@
 @extends('layouts.Authentication')
 
+@section('title', 'Forgot Password - Laundry 6 Plus')
+
 @section('content')
 <div class="min-h-screen w-full flex items-center justify-center p-4">
     <div class="p-8 rounded-3xl shadow-md w-full max-w-md bg-white">

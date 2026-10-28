@@ -12,7 +12,51 @@ use Illuminate\Support\Facades\Storage;
 class SettingController extends Controller
 {
     /**
-     * Default baseline settings matching the teacher screenshot exactly.
+     * Ensure required tables exist in database.
+     */
+    protected function ensureTables(): void
+    {
+        try {
+            if (!Schema::hasTable('settings')) {
+                Schema::create('settings', function ($table) {
+                    $table->id();
+                    $table->string('key', 100)->unique();
+                    $table->longText('value')->nullable();
+                    $table->string('group', 100)->default('general');
+                    $table->string('description', 255)->nullable();
+                    $table->timestamps();
+                });
+            }
+
+            if (!Schema::hasTable('database_backups')) {
+                Schema::create('database_backups', function ($table) {
+                    $table->id();
+                    $table->string('filename', 255);
+                    $table->string('filesize', 100)->default('0 KB');
+                    $table->string('created_by', 100)->default('Admin');
+                    $table->timestamps();
+                });
+            }
+        } catch (\Throwable $e) {}
+    }
+
+    /**
+     * Remove old hardcoded demo backup rows from 2024 if present in database.
+     */
+    protected function cleanupDemoBackups(): void
+    {
+        try {
+            if (Schema::hasTable('database_backups')) {
+                DB::table('database_backups')
+                    ->where('filename', 'backup_20240501.sql')
+                    ->orWhere('filename', 'like', '%20240501%')
+                    ->delete();
+            }
+        } catch (\Throwable $e) {}
+    }
+
+    /**
+     * Default baseline settings configuration.
      */
     protected function getDefaultSettings(): array
     {
@@ -48,53 +92,26 @@ class SettingController extends Controller
             'apply_tax_on' => 'All Services',
 
             // Backup Metadata
-            'last_backup_date' => '01 May 2024 10:30 AM',
-            'last_backup_by' => 'Admin',
+            'last_backup_date' => 'Never',
+            'last_backup_by' => 'None',
         ];
     }
 
     /**
-     * Default baseline database backups list.
-     */
-    protected function getDefaultBackups(): array
-    {
-        return [
-            [
-                'id' => 1,
-                'filename' => 'backup_20240501.sql',
-                'filesize' => '24.6 MB',
-                'date' => '01 May 2024 10:30 AM',
-                'by' => 'Admin',
-            ],
-        ];
-    }
-
-    /**
-     * Multi-layer persistence loader for settings.
+     * Database-driven settings loader.
      */
     protected function loadSettings(): array
     {
-        $defaults = $this->getDefaultSettings();
+        $this->ensureTables();
+        $this->cleanupDemoBackups();
 
-        // 1. Try MySQL Database
+        $defaults = $this->getDefaultSettings();
+        $settings = $defaults;
+
         try {
             if (Schema::hasTable('settings')) {
                 $count = DB::table('settings')->count();
-                if ($count > 0) {
-                    $rows = DB::table('settings')->get();
-                    $settings = $defaults;
-                    foreach ($rows as $row) {
-                        $val = $row->value;
-                        if (str_starts_with($val, '{') || str_starts_with($val, '[')) {
-                            $decoded = json_decode($val, true);
-                            if (json_last_error() === JSON_ERROR_NONE) {
-                                $val = $decoded;
-                            }
-                        }
-                        $settings[$row->key] = $val;
-                    }
-                    return $settings;
-                } else {
+                if ($count === 0) {
                     foreach ($defaults as $k => $v) {
                         DB::table('settings')->insert([
                             'key' => $k,
@@ -104,45 +121,46 @@ class SettingController extends Controller
                             'updated_at' => now(),
                         ]);
                     }
-                    return $defaults;
+                } else {
+                    $rows = DB::table('settings')->get();
+                    foreach ($rows as $row) {
+                        $val = $row->value;
+                        if (is_string($val) && (str_starts_with($val, '{') || str_starts_with($val, '['))) {
+                            $decoded = json_decode($val, true);
+                            if (json_last_error() === JSON_ERROR_NONE) {
+                                $val = $decoded;
+                            }
+                        }
+                        $settings[$row->key] = $val;
+                    }
                 }
             }
         } catch (\Throwable $e) {}
 
-        // 2. Try JSON storage file
-        if (Storage::exists('settings.json')) {
-            try {
-                $json = Storage::get('settings.json');
-                $decoded = json_decode($json, true);
-                if (is_array($decoded) && count($decoded) > 0) {
-                    return array_merge($defaults, $decoded);
-                }
-            } catch (\Throwable $e) {}
-        }
-
-        // 3. Try Session
-        if (session()->has('app_settings')) {
-            $sess = session('app_settings');
-            if (is_array($sess)) {
-                return array_merge($defaults, $sess);
-            }
-        }
-
-        // 4. Default Fallback
+        // Dynamically populate latest backup info from database_backups table
         try {
-            Storage::put('settings.json', json_encode($defaults, JSON_PRETTY_PRINT));
+            if (Schema::hasTable('database_backups')) {
+                $latest = DB::table('database_backups')->orderBy('id', 'desc')->first();
+                if ($latest) {
+                    $settings['last_backup_date'] = $latest->created_at ? date('d M Y h:i A', strtotime($latest->created_at)) : 'Recently';
+                    $settings['last_backup_by'] = $latest->created_by ?? 'Admin';
+                } else {
+                    $settings['last_backup_date'] = 'Never';
+                    $settings['last_backup_by'] = 'None';
+                }
+            }
         } catch (\Throwable $e) {}
-        session(['app_settings' => $defaults]);
 
-        return $defaults;
+        return $settings;
     }
 
     /**
-     * Save settings to storage layers.
+     * Save settings directly to MySQL database.
      */
     protected function saveSettings(array $settings): void
     {
-        // 1. Save to DB
+        $this->ensureTables();
+
         try {
             if (Schema::hasTable('settings')) {
                 foreach ($settings as $k => $v) {
@@ -156,67 +174,32 @@ class SettingController extends Controller
                 }
             }
         } catch (\Throwable $e) {}
-
-        // 2. Save to JSON
-        try {
-            Storage::put('settings.json', json_encode($settings, JSON_PRETTY_PRINT));
-        } catch (\Throwable $e) {}
-
-        // 3. Save to Session
-        session(['app_settings' => $settings]);
     }
 
     /**
-     * Load backups list.
+     * Load backups directly from MySQL database.
      */
     protected function loadBackups(): array
     {
-        $defaults = $this->getDefaultBackups();
+        $this->ensureTables();
+        $this->cleanupDemoBackups();
 
         try {
             if (Schema::hasTable('database_backups')) {
                 $rows = DB::table('database_backups')->orderBy('id', 'desc')->get();
-                if ($rows->count() > 0) {
-                    return $rows->map(function ($r) {
-                        return [
-                            'id' => $r->id,
-                            'filename' => $r->filename,
-                            'filesize' => $r->filesize,
-                            'date' => $r->created_at ? date('d M Y h:i A', strtotime($r->created_at)) : '01 May 2024 10:30 AM',
-                            'by' => $r->created_by ?? 'Admin',
-                        ];
-                    })->all();
-                }
+                return $rows->map(function ($r) {
+                    return [
+                        'id' => $r->id,
+                        'filename' => $r->filename,
+                        'filesize' => $r->filesize ?? '0 KB',
+                        'date' => $r->created_at ? date('d M Y h:i A', strtotime($r->created_at)) : '',
+                        'by' => $r->created_by ?? 'Admin',
+                    ];
+                })->all();
             }
         } catch (\Throwable $e) {}
 
-        if (Storage::exists('database_backups.json')) {
-            try {
-                $json = Storage::get('database_backups.json');
-                $decoded = json_decode($json, true);
-                if (is_array($decoded) && count($decoded) > 0) {
-                    return $decoded;
-                }
-            } catch (\Throwable $e) {}
-        }
-
-        if (session()->has('database_backups')) {
-            return session('database_backups');
-        }
-
-        return $defaults;
-    }
-
-    /**
-     * Save backups list.
-     */
-    protected function saveBackups(array $backups): void
-    {
-        try {
-            Storage::put('database_backups.json', json_encode($backups, JSON_PRETTY_PRINT));
-        } catch (\Throwable $e) {}
-
-        session(['database_backups' => $backups]);
+        return [];
     }
 
     /**
@@ -366,6 +349,8 @@ class SettingController extends Controller
      */
     public function backup(Request $request)
     {
+        $this->ensureTables();
+
         $now = now();
         $dateStr = $now->format('d M Y h:i A');
         $filename = 'backup_' . $now->format('Ymd_His') . '.sql';
@@ -387,9 +372,11 @@ class SettingController extends Controller
 
         // Store backup in local storage
         Storage::put("backups/{$filename}", $sqlDump);
-        $fileSizeStr = number_format(strlen($sqlDump) / 1048576, 1) . ' MB';
-        if ($fileSizeStr === '0.0 MB') {
-            $fileSizeStr = '24.6 MB';
+        $bytes = strlen($sqlDump);
+        if ($bytes >= 1048576) {
+            $fileSizeStr = number_format($bytes / 1048576, 1) . ' MB';
+        } else {
+            $fileSizeStr = number_format($bytes / 1024, 1) . ' KB';
         }
 
         // 2. Insert into database_backups table
@@ -410,17 +397,6 @@ class SettingController extends Controller
         $settings['last_backup_date'] = $dateStr;
         $settings['last_backup_by'] = $user;
         $this->saveSettings($settings);
-
-        // Prepend to backups list
-        $backups = $this->loadBackups();
-        array_unshift($backups, [
-            'id' => count($backups) + 1,
-            'filename' => $filename,
-            'filesize' => $fileSizeStr,
-            'date' => $dateStr,
-            'by' => $user,
-        ]);
-        $this->saveBackups($backups);
 
         if ($request->ajax() || $request->wantsJson()) {
             return response()->json([
@@ -469,7 +445,7 @@ class SettingController extends Controller
      */
     public function restore(Request $request)
     {
-        $filename = $request->input('backup_file', 'backup_20240501.sql');
+        $filename = $request->input('backup_file', '');
 
         if ($request->hasFile('custom_backup_file')) {
             $uploaded = $request->file('custom_backup_file');
@@ -491,11 +467,8 @@ class SettingController extends Controller
      */
     public function reset()
     {
+        $this->ensureTables();
         $defaults = $this->getDefaultSettings();
-        $this->saveSettings($defaults);
-
-        $defaultBackups = $this->getDefaultBackups();
-        $this->saveBackups($defaultBackups);
 
         try {
             if (Schema::hasTable('settings')) {
@@ -513,14 +486,6 @@ class SettingController extends Controller
 
             if (Schema::hasTable('database_backups')) {
                 DB::table('database_backups')->truncate();
-                DB::table('database_backups')->insert([
-                    'id' => 1,
-                    'filename' => 'backup_20240501.sql',
-                    'filesize' => '24.6 MB',
-                    'created_by' => 'Admin',
-                    'created_at' => '2024-05-01 10:30:00',
-                    'updated_at' => '2024-05-01 10:30:00',
-                ]);
             }
         } catch (\Throwable $e) {}
 

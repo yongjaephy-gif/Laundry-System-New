@@ -3,10 +3,12 @@
 namespace App\Http\Controllers;
 
 use App\Models\Employee;
+use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Pagination\LengthAwarePaginator;
+
 
 class EmployeeController extends Controller
 {
@@ -60,28 +62,67 @@ class EmployeeController extends Controller
         }
 
         if ($hasDb) {
+            try {
+                // Ensure job_role column in MySQL supports 'Admin' and migrate 'Manager' -> 'Admin'
+                $empCols = Schema::getColumnListing('employees');
+                if (in_array('job_role', $empCols)) {
+                    $colInfo = \Illuminate\Support\Facades\DB::select("SHOW COLUMNS FROM employees LIKE 'job_role'");
+                    if (!empty($colInfo)) {
+                        $type = $colInfo[0]->Type ?? '';
+                        if (str_starts_with(strtolower($type), 'enum') && !str_contains($type, "'Admin'")) {
+                            $newType = str_replace("enum(", "enum('Admin',", $type);
+                            \Illuminate\Support\Facades\DB::statement("ALTER TABLE `employees` MODIFY COLUMN `job_role` $newType");
+                        }
+                    }
+                    \Illuminate\Support\Facades\DB::table('employees')
+                        ->where('job_role', 'Manager')
+                        ->update(['job_role' => 'Admin']);
+                }
+                if (in_array('role', $empCols)) {
+                    \Illuminate\Support\Facades\DB::table('employees')
+                        ->where('role', 'Manager')
+                        ->update(['role' => 'Admin']);
+                }
+            } catch (\Throwable $e) {}
+
             $totalEmployees = Employee::count();
             $activeEmployees = Employee::where('status', 'Active')->count();
             $inactiveEmployees = Employee::where('status', 'Inactive')->count();
 
+            $empCols = Schema::getColumnListing('employees');
             $query = Employee::query();
 
             if (!empty($search)) {
-                $query->where(function ($q) use ($search) {
-                    $q->where('name', 'like', "%{$search}%")
-                      ->orWhere('email', 'like', "%{$search}%")
-                      ->orWhere('phone', 'like', "%{$search}%")
-                      ->orWhere('role', 'like', "%{$search}%")
-                      ->orWhere('employee_id', 'like', "%{$search}%");
+                $query->where(function ($q) use ($search, $empCols) {
+                    if (in_array('full_name', $empCols)) $q->orWhere('full_name', 'like', "%{$search}%");
+                    if (in_array('name', $empCols)) $q->orWhere('name', 'like', "%{$search}%");
+                    if (in_array('email', $empCols)) $q->orWhere('email', 'like', "%{$search}%");
+                    if (in_array('phone_number', $empCols)) $q->orWhere('phone_number', 'like', "%{$search}%");
+                    if (in_array('phone', $empCols)) $q->orWhere('phone', 'like', "%{$search}%");
+                    if (in_array('job_role', $empCols)) $q->orWhere('job_role', 'like', "%{$search}%");
+                    if (in_array('role', $empCols)) $q->orWhere('role', 'like', "%{$search}%");
+                    if (in_array('employee_id', $empCols)) $q->orWhere('employee_id', 'like', "%{$search}%");
                 });
             }
 
             if (!empty($roleFilter) && $roleFilter !== 'All Roles') {
-                $query->where('role', $roleFilter);
+                if (in_array('job_role', $empCols)) {
+                    $query->where('job_role', $roleFilter);
+                } elseif (in_array('role', $empCols)) {
+                    $query->where('role', $roleFilter);
+                }
             }
 
             if (!empty($statusFilter) && $statusFilter !== 'All Status') {
                 $query->where('status', $statusFilter);
+            }
+
+            if (in_array('created_at', $empCols)) {
+                $query->orderBy('created_at', 'desc');
+            } elseif (in_array('employee_id', $empCols)) {
+                $query->orderBy('employee_id', 'desc');
+            } elseif (in_array('id', $empCols)) {
+                $query->orderBy('id', 'desc');
             }
 
             $employees = $query->paginate(20)->withQueryString();
@@ -154,11 +195,12 @@ class EmployeeController extends Controller
             $id = $optionalId ?? $request->route('id') ?? $request->route('employee');
         }
 
-        $id = is_object($id) ? ($id->id ?? $id->employee_id ?? 1) : $id;
+        $id = is_object($id) ? ($id->employee_id ?? $id->id ?? 1) : $id;
         $emp = null;
         try {
             if (Schema::hasTable('employees')) {
-                $emp = Employee::find($id) ?: Employee::where('employee_id', $id)->first();
+                $emp = Employee::where('employee_id', $id)->first() 
+                    ?: (Schema::hasColumn('employees', 'id') ? Employee::where('id', $id)->first() : null);
             }
         } catch (\Throwable $e) {}
 
@@ -166,6 +208,27 @@ class EmployeeController extends Controller
             'success' => (bool)$emp,
             'employee' => $emp
         ]);
+    }
+
+    /**
+     * Map role name to integer role_id for the users table.
+     *
+     * @param string|null $roleName
+     * @return int
+     */
+    protected function getRoleIdFromRoleName(?string $roleName): int
+    {
+        $roleLower = strtolower(trim((string)$roleName));
+        if (str_contains($roleLower, 'admin')) {
+            return 1;
+        }
+        if (str_contains($roleLower, 'deliver')) {
+            return 3;
+        }
+        if (str_contains($roleLower, 'reception')) {
+            return 4;
+        }
+        return 2; // Default: Staff
     }
 
     /**
@@ -203,36 +266,92 @@ class EmployeeController extends Controller
         }
 
         $newEmp = null;
+        $saveError = null;
 
         try {
             if (Schema::hasTable('employees')) {
-                $maxId = (int) (Employee::max('id') ?? 0);
-                $empId = 'EMP' . str_pad($maxId + 1, 3, '0', STR_PAD_LEFT);
-                while (Employee::where('employee_id', $empId)->exists()) {
-                    $maxId++;
-                    $empId = 'EMP' . str_pad($maxId + 1, 3, '0', STR_PAD_LEFT);
+                $empCols = Schema::getColumnListing('employees');
+
+                // 1. Sync or create user account first to link with employee
+                $linkedUser = null;
+                if (Schema::hasTable('users')) {
+                    $roleId = $this->getRoleIdFromRoleName($request->role);
+                    $hashedPassword = Hash::make($request->password ?: 'password123');
+                    $userCols = Schema::getColumnListing('users');
+                    $generatedUsername = strtolower(explode('@', $request->email)[0]);
+
+                    $userData = [
+                        'email' => $request->email,
+                    ];
+
+                    if (in_array('name', $userCols)) $userData['name'] = $request->name;
+                    if (in_array('full_name', $userCols)) $userData['full_name'] = $request->name;
+                    if (in_array('username', $userCols)) $userData['username'] = $generatedUsername;
+                    if (in_array('password', $userCols)) $userData['password'] = $hashedPassword;
+                    if (in_array('password_hash', $userCols)) $userData['password_hash'] = $hashedPassword;
+                    if (in_array('role_id', $userCols)) $userData['role_id'] = $roleId;
+                    if (in_array('phone', $userCols)) $userData['phone'] = $request->phone;
+                    if (in_array('profile_image_url', $userCols)) $userData['profile_image_url'] = $avatarUrl;
+                    if (in_array('status', $userCols)) $userData['status'] = $status;
+
+                    $linkedUser = User::where('email', $request->email)->first();
+                    if ($linkedUser) {
+                        $linkedUser->update($userData);
+                    } else {
+                        $linkedUser = User::create($userData);
+                    }
                 }
 
-                $newEmp = Employee::create([
-                    'employee_id' => $empId,
-                    'name' => $request->name,
+                // 2. Prepare payload for employees table matching exact MySQL columns
+                $payload = [
                     'email' => $request->email,
-                    'role' => $request->role,
-                    'phone' => $request->phone,
-                    'address' => $request->address ?? 'Phnom Penh, Cambodia',
-                    'password' => Hash::make($request->password ?: 'password123'),
-                    'status' => $status,
-                    'work_schedule' => $workSchedule,
-                    'job_role_details' => $request->job_role_details,
-                    'avatar' => $avatarUrl,
-                    'attendance_status' => $status === 'Active' ? 'Present' : 'Absent',
-                ]);
+                ];
+
+                // Name mapping
+                if (in_array('full_name', $empCols)) $payload['full_name'] = $request->name;
+                if (in_array('name', $empCols)) $payload['name'] = $request->name;
+
+                // Phone mapping
+                if (in_array('phone_number', $empCols)) $payload['phone_number'] = $request->phone;
+                if (in_array('phone', $empCols)) $payload['phone'] = $request->phone;
+
+                // Role mapping (handles job_role enum and role string)
+                if (in_array('job_role', $empCols)) $payload['job_role'] = $request->role;
+                if (in_array('role', $empCols)) $payload['role'] = $request->role;
+
+                // user_id link
+                if (in_array('user_id', $empCols) && $linkedUser) {
+                    $payload['user_id'] = $linkedUser->getKey();
+                }
+
+                // Default MySQL columns
+                if (in_array('date_hired', $empCols)) $payload['date_hired'] = now()->toDateString();
+                if (in_array('salary', $empCols)) $payload['salary'] = 0.00;
+                if (in_array('status', $empCols)) $payload['status'] = $status;
+
+                // Other columns if present
+                if (in_array('address', $empCols)) $payload['address'] = $request->address ?? 'Phnom Penh, Cambodia';
+                if (in_array('password', $empCols)) $payload['password'] = Hash::make($request->password ?: 'password123');
+                if (in_array('work_schedule', $empCols)) $payload['work_schedule'] = $workSchedule;
+                if (in_array('job_role_details', $empCols)) $payload['job_role_details'] = $request->job_role_details;
+                if (in_array('avatar', $empCols)) $payload['avatar'] = $avatarUrl;
+                if (in_array('attendance_status', $empCols)) $payload['attendance_status'] = ($status === 'Active' ? 'Present' : 'Absent');
+
+                $newEmp = Employee::create($payload);
             }
         } catch (\Throwable $e) {
+            $saveError = $e->getMessage();
             \Illuminate\Support\Facades\Log::error("Employee DB save failed: " . $e->getMessage());
         }
 
         if ($request->ajax() || $request->wantsJson()) {
+            if (!$newEmp && $saveError) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Failed to save employee: ' . $saveError,
+                ], 422);
+            }
+
             return response()->json([
                 'success' => true,
                 'message' => 'Employee added successfully!',
@@ -283,25 +402,61 @@ class EmployeeController extends Controller
 
         try {
             if (Schema::hasTable('employees')) {
-                $employee = Employee::find($id) ?: Employee::where('employee_id', $id)->first();
+                $empCols = Schema::getColumnListing('employees');
+                $employee = Employee::where('employee_id', $id)->first() 
+                    ?: (in_array('id', $empCols) ? Employee::where('id', $id)->first() : null);
+
                 if ($employee) {
+                    $oldEmail = $employee->email;
                     $data = [
-                        'name' => $request->name,
                         'email' => $request->email,
-                        'role' => $request->role,
-                        'phone' => $request->phone,
-                        'address' => $request->address,
-                        'status' => $status,
-                        'work_schedule' => $workSchedule,
-                        'job_role_details' => $request->job_role_details,
                     ];
-                    if ($request->filled('password')) {
+                    if (in_array('full_name', $empCols)) $data['full_name'] = $request->name;
+                    if (in_array('name', $empCols)) $data['name'] = $request->name;
+
+                    if (in_array('phone_number', $empCols)) $data['phone_number'] = $request->phone;
+                    if (in_array('phone', $empCols)) $data['phone'] = $request->phone;
+
+                    if (in_array('job_role', $empCols)) $data['job_role'] = $request->role;
+                    if (in_array('role', $empCols)) $data['role'] = $request->role;
+
+                    if (in_array('address', $empCols)) $data['address'] = $request->address;
+                    if (in_array('status', $empCols)) $data['status'] = $status;
+                    if (in_array('work_schedule', $empCols)) $data['work_schedule'] = $workSchedule;
+                    if (in_array('job_role_details', $empCols)) $data['job_role_details'] = $request->job_role_details;
+
+                    if ($request->filled('password') && in_array('password', $empCols)) {
                         $data['password'] = Hash::make($request->password);
                     }
-                    if ($avatarUrl) {
+                    if ($avatarUrl && in_array('avatar', $empCols)) {
                         $data['avatar'] = $avatarUrl;
                     }
                     $employee->update($data);
+
+                    // Sync with users table
+                    if (Schema::hasTable('users')) {
+                        $user = User::where('email', $oldEmail)->orWhere('email', $request->email)->first();
+                        if ($user) {
+                            $roleId = $this->getRoleIdFromRoleName($request->role);
+                            $userCols = Schema::getColumnListing('users');
+                            $updateData = ['email' => $request->email];
+
+                            if (in_array('name', $userCols)) $updateData['name'] = $request->name;
+                            if (in_array('full_name', $userCols)) $updateData['full_name'] = $request->name;
+                            if (in_array('role_id', $userCols)) $updateData['role_id'] = $roleId;
+                            if (in_array('phone', $userCols)) $updateData['phone'] = $request->phone;
+                            if (in_array('status', $userCols)) $updateData['status'] = $status;
+                            if ($avatarUrl && in_array('profile_image_url', $userCols)) $updateData['profile_image_url'] = $avatarUrl;
+
+                            if ($request->filled('password')) {
+                                $hashed = Hash::make($request->password);
+                                if (in_array('password', $userCols)) $updateData['password'] = $hashed;
+                                if (in_array('password_hash', $userCols)) $updateData['password_hash'] = $hashed;
+                            }
+
+                            $user->update($updateData);
+                        }
+                    }
                 }
             }
         } catch (\Throwable $e) {
@@ -327,12 +482,13 @@ class EmployeeController extends Controller
      */
     public function toggleAttendance(Request $request, $id)
     {
-        $id = is_object($id) ? ($id->id ?? $id->employee_id ?? 1) : $id;
+        $id = is_object($id) ? ($id->employee_id ?? $id->id ?? 1) : $id;
         $newStatus = $request->input('attendance_status', 'Present');
 
         try {
             if (Schema::hasTable('employees')) {
-                $employee = Employee::find($id) ?: Employee::where('employee_id', $id)->first();
+                $employee = Employee::where('employee_id', $id)->first() 
+                    ?: (Schema::hasColumn('employees', 'id') ? Employee::where('id', $id)->first() : null);
                 if ($employee) {
                     $employee->update(['attendance_status' => $newStatus]);
                 }
@@ -359,15 +515,52 @@ class EmployeeController extends Controller
      */
     public function destroy(Request $request, $id)
     {
-        $id = is_object($id) ? ($id->id ?? $id->employee_id ?? 1) : $id;
+        $id = is_object($id) ? ($id->employee_id ?? $id->id ?? 1) : $id;
         try {
             if (Schema::hasTable('employees')) {
-                $employee = Employee::find($id) ?: Employee::where('employee_id', $id)->first();
+                $employee = Employee::where('employee_id', $id)->first() 
+                    ?: (Schema::hasColumn('employees', 'id') ? Employee::where('id', $id)->first() : null);
+
                 if ($employee) {
+                    $userId = $employee->user_id ?? null;
+                    $employeeEmail = $employee->email ?? null;
+
+                    // 1. Delete associated attendance records if any
+                    if (Schema::hasTable('employee_attendance')) {
+                        try {
+                            \Illuminate\Support\Facades\DB::table('employee_attendance')
+                                ->where('employee_id', $employee->employee_id ?? $id)
+                                ->delete();
+                        } catch (\Throwable $te) {}
+                    }
+
+                    // 2. Delete the employee record FIRST (Child row in Foreign Key relationship)
                     $employee->delete();
+
+                    // 3. Delete the linked user record SECOND (Parent row)
+                    if (Schema::hasTable('users')) {
+                        try {
+                            $user = null;
+                            if (!empty($userId)) {
+                                $user = User::where('user_id', $userId)->first();
+                            }
+                            if (!$user && !empty($employeeEmail)) {
+                                $user = User::where('email', $employeeEmail)->first();
+                            }
+
+                            // Protect master admin from being deleted (user_id 1 or username admin)
+                            if ($user && ($user->user_id ?? $user->id) != 1 && strtolower($user->username ?? '') !== 'admin') {
+                                $user->delete();
+                            }
+                        } catch (\Throwable $ue) {
+                            \Illuminate\Support\Facades\Log::error("Failed to delete user after employee removal: " . $ue->getMessage());
+                        }
+                    }
                 }
             }
-        } catch (\Throwable $e) {}
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::error("Employee deletion error: " . $e->getMessage());
+        }
 
         if ($request->ajax() || $request->wantsJson()) {
             return response()->json([

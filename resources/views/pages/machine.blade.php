@@ -1,6 +1,6 @@
 @extends('layouts.navbar')
 
-@section('title', 'Machine Management - Laundry 6 Plus')
+@section('title', 'Machines')
 
 @section('content')
 <div class="space-y-6 w-full mx-auto">
@@ -12,8 +12,11 @@
                 <i class="fa-solid fa-circle-check text-emerald-600 text-base"></i>
                 <span class="font-medium">{{ session('success') }}</span>
             </div>
-            <button onclick="this.parentElement.remove()" class="text-emerald-600 hover:text-emerald-800 font-bold text-lg leading-none cursor-pointer">&times;</button>
-        </div>
+            <script>
+            setTimeout(function() {
+                window.location.reload();
+            }, 200);
+        </script>
     @endif
 
     <!-- ERROR NOTIFICATION -->
@@ -67,7 +70,7 @@
             </div>
             <div>
                 <p class="text-xs sm:text-sm font-medium text-gray-500">Available</p>
-                <h3 class="text-xl sm:text-xl font-bold text-emerald-600 mt-0.5 tracking-tight" id="cardAvailableCount">{{ $stats['available'] ?? 8 }}</h3>
+                <h3 class="text-xl sm:text-xl font-bold text-emerald-600 mt-0.5 tracking-tight" id="cardAvailableCount">{{ $stats['available'] ?? 0 }}</h3>
                 <p class="text-xs text-gray-400 mt-0.5">Ready to use</p>
             </div>
         </div>
@@ -82,7 +85,7 @@
             </div>
             <div>
                 <p class="text-xs sm:text-sm font-medium text-gray-500">In Use</p>
-                <h3 class="text-xl sm:text-xl font-bold text-amber-600 mt-0.5 tracking-tight" id="cardInUseCount">{{ $stats['in_use'] ?? 3 }}</h3>
+                <h3 class="text-xl sm:text-xl font-bold text-amber-600 mt-0.5 tracking-tight" id="cardInUseCount">{{ $stats['in_use'] ?? 0 }}</h3>
                 <p class="text-xs text-gray-400 mt-0.5">Currently running</p>
             </div>
         </div>
@@ -96,7 +99,7 @@
             </div>
             <div>
                 <p class="text-xs sm:text-sm font-medium text-gray-500">Under Maintenance</p>
-                <h3 class="text-xl sm:text-xl font-bold text-rose-500 mt-0.5 tracking-tight" id="cardMaintenanceCount">{{ $stats['maintenance'] ?? 1 }}</h3>
+                <h3 class="text-xl sm:text-xl font-bold text-rose-500 mt-0.5 tracking-tight" id="cardMaintenanceCount">{{ $stats['maintenance'] ?? 0 }}</h3>
                 <p class="text-xs text-gray-400 mt-0.5">Needs service</p>
             </div>
         </div>
@@ -316,7 +319,7 @@
         <!-- Table Footer & Pagination Matching Screenshot -->
         <div class="p-6 pt-5 border-t border-[#F1F5F9] flex flex-col sm:flex-row sm:items-center justify-between gap-4 text-xs">
             <div id="tableInfoText" class="text-xs sm:text-sm font-medium text-gray-500">
-                Showing 1 - {{ count($machines) }} of {{ $stats['total'] ?? count($machines) }} machines
+                Showing {{ count($machines) > 0 ? '1' : '0' }} - {{ count($machines) }} of {{ $stats['total'] ?? count($machines) }} machines
             </div>
 
             <div class="flex items-center space-x-1 sm:space-x-1.5">
@@ -545,7 +548,7 @@
         </div>
 
         <!-- Add Form -->
-        <form id="addMachineForm" method="POST" action="" class="space-y-3.5 mt-4">
+        <form id="addMachineForm" method="POST" action="{{ route('machines.store') }}" class="space-y-3.5 mt-4">
             @csrf
 
             <!-- Machine ID & Name Grid -->
@@ -1043,7 +1046,7 @@
     function openAddMachineModal() {
         const form = document.getElementById('addMachineForm');
         if (form) {
-            form.action = getAppEndpoint();
+            form.action = '{{ route('machines.store') }}';
         }
         document.getElementById('addMachineModal').classList.remove('hidden');
     }
@@ -1168,16 +1171,17 @@
         // Add Form
         const addForm = document.getElementById('addMachineForm');
         if (addForm) {
-            addForm.action = getAppEndpoint();
+            addForm.action = '{{ route('machines.store') }}';
             addForm.addEventListener('submit', function(e) {
                 e.preventDefault();
                 const btn = this.querySelector('button[type="submit"]');
+                const origHtml = btn ? btn.innerHTML : '';
                 if (btn) {
                     btn.disabled = true;
                     btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin text-xs"></i><span>Registering...</span>';
                 }
                 const formData = new FormData(this);
-                fetch(getAppEndpoint(), {
+                fetch(this.action || '{{ route('machines.store') }}', {
                     method: 'POST',
                     body: formData,
                     headers: {
@@ -1185,13 +1189,25 @@
                         'Accept': 'application/json'
                     }
                 })
-                .then(res => res.json())
+                .then(res => {
+                    return res.json().then(data => {
+                        if (!res.ok || !data.success) {
+                            throw new Error(data.message || 'Server error occurred (' + res.status + ')');
+                        }
+                        return data;
+                    });
+                })
                 .then(data => {
                     closeAddMachineModal();
                     window.location.reload();
                 })
                 .catch(err => {
-                    addForm.submit();
+                    console.error('Registration failed:', err);
+                    alert('Register Machine failed: ' + err.message);
+                    if (btn) {
+                        btn.disabled = false;
+                        btn.innerHTML = origHtml || '<i class="fa-solid fa-check text-xs"></i><span>Register Machine</span>';
+                    }
                 });
             });
         }

@@ -6,335 +6,153 @@ use App\Models\Report;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Schema;
-use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\Log;
 
 class ReportController extends Controller
 {
     /**
-     * Official 25 baseline reports matching the teacher's screenshot.
+     * Ensure table exists and has necessary columns in MySQL.
      */
-    protected function getDefaultReports(): array
+    protected function ensureReportsTable(): void
     {
-        return [
-            // Page 1 (Matching screenshot exactly)
-            [
-                'id' => 1,
-                'name' => 'Daily Sales Report',
-                'type' => 'Sales',
-                'date_range' => '01 May 2024',
-                'generated_by' => 'Admin',
-                'generated_on' => '01 May 2024 10:30 AM',
-                'status' => 'Completed',
-            ],
-            [
-                'id' => 2,
-                'name' => 'Monthly Sales Report',
-                'type' => 'Sales',
-                'date_range' => 'April 2024',
-                'generated_by' => 'Admin',
-                'generated_on' => '01 May 2024 10:25 AM',
-                'status' => 'Completed',
-            ],
-            [
-                'id' => 3,
-                'name' => 'Laundry Order Report',
-                'type' => 'Order',
-                'date_range' => '01 Apr 2024 - 30 Apr 2024',
-                'generated_by' => 'Admin',
-                'generated_on' => '01 May 2024 10:20 AM',
-                'status' => 'Completed',
-            ],
-            [
-                'id' => 4,
-                'name' => 'Payment Report',
-                'type' => 'Payment',
-                'date_range' => '01 Apr 2024 - 30 Apr 2024',
-                'generated_by' => 'Admin',
-                'generated_on' => '01 May 2024 10:15 AM',
-                'status' => 'Completed',
-            ],
-            [
-                'id' => 5,
-                'name' => 'Inventory Report',
-                'type' => 'Inventory',
-                'date_range' => '30 Apr 2024',
-                'generated_by' => 'Admin',
-                'generated_on' => '30 Apr 2024 05:40 PM',
-                'status' => 'Completed',
-            ],
-
-            // Page 2
-            [
-                'id' => 6,
-                'name' => 'Employee Report',
-                'type' => 'Employee',
-                'date_range' => '01 Apr 2024 - 30 Apr 2024',
-                'generated_by' => 'Admin',
-                'generated_on' => '30 Apr 2024 04:30 PM',
-                'status' => 'Completed',
-            ],
-            [
-                'id' => 7,
-                'name' => 'Machine Usage Report',
-                'type' => 'Machine',
-                'date_range' => '01 Apr 2024 - 30 Apr 2024',
-                'generated_by' => 'Admin',
-                'generated_on' => '30 Apr 2024 03:15 PM',
-                'status' => 'Completed',
-            ],
-            [
-                'id' => 8,
-                'name' => 'Delivery Report',
-                'type' => 'Delivery',
-                'date_range' => '01 Apr 2024 - 30 Apr 2024',
-                'generated_by' => 'Admin',
-                'generated_on' => '30 Apr 2024 02:00 PM',
-                'status' => 'Completed',
-            ],
-            [
-                'id' => 9,
-                'name' => 'Service Popularity Report',
-                'type' => 'Service',
-                'date_range' => '01 Apr 2024 - 30 Apr 2024',
-                'generated_by' => 'Admin',
-                'generated_on' => '30 Apr 2024 11:30 AM',
-                'status' => 'Completed',
-            ],
-            [
-                'id' => 10,
-                'name' => 'Customer Report',
-                'type' => 'Customer',
-                'date_range' => '01 Apr 2024 - 30 Apr 2024',
-                'generated_by' => 'Admin',
-                'generated_on' => '30 Apr 2024 09:45 AM',
-                'status' => 'Completed',
-            ],
-
-            // Page 3
-            [
-                'id' => 11,
-                'name' => 'Daily Sales Report',
-                'type' => 'Sales',
-                'date_range' => '30 Apr 2024',
-                'generated_by' => 'Admin',
-                'generated_on' => '30 Apr 2024 08:30 PM',
-                'status' => 'Completed',
-            ],
-            [
-                'id' => 12,
-                'name' => 'Daily Sales Report',
-                'type' => 'Sales',
-                'date_range' => '29 Apr 2024',
-                'generated_by' => 'Admin',
-                'generated_on' => '29 Apr 2024 08:30 PM',
-                'status' => 'Completed',
-            ],
-            [
-                'id' => 13,
-                'name' => 'Laundry Order Report',
-                'type' => 'Order',
-                'date_range' => '15 Apr 2024 - 21 Apr 2024',
-                'generated_by' => 'Admin',
-                'generated_on' => '22 Apr 2024 10:00 AM',
-                'status' => 'Completed',
-            ],
-            [
-                'id' => 14,
-                'name' => 'Payment Report',
-                'type' => 'Payment',
-                'date_range' => '15 Apr 2024 - 21 Apr 2024',
-                'generated_by' => 'Admin',
-                'generated_on' => '22 Apr 2024 09:30 AM',
-                'status' => 'Completed',
-            ],
-            [
-                'id' => 15,
-                'name' => 'Inventory Report',
-                'type' => 'Inventory',
-                'date_range' => '15 Apr 2024',
-                'generated_by' => 'Admin',
-                'generated_on' => '15 Apr 2024 04:00 PM',
-                'status' => 'Completed',
-            ],
-
-            // Page 4
-            [
-                'id' => 16,
-                'name' => 'Machine Usage Report',
-                'type' => 'Machine',
-                'date_range' => '01 Apr 2024 - 15 Apr 2024',
-                'generated_by' => 'Admin',
-                'generated_on' => '16 Apr 2024 11:00 AM',
-                'status' => 'Completed',
-            ],
-            [
-                'id' => 17,
-                'name' => 'Delivery Report',
-                'type' => 'Delivery',
-                'date_range' => '08 Apr 2024 - 14 Apr 2024',
-                'generated_by' => 'Admin',
-                'generated_on' => '15 Apr 2024 02:20 PM',
-                'status' => 'Completed',
-            ],
-            [
-                'id' => 18,
-                'name' => 'Monthly Sales Report',
-                'type' => 'Sales',
-                'date_range' => 'March 2024',
-                'generated_by' => 'Admin',
-                'generated_on' => '01 Apr 2024 10:00 AM',
-                'status' => 'Completed',
-            ],
-            [
-                'id' => 19,
-                'name' => 'Laundry Order Report',
-                'type' => 'Order',
-                'date_range' => '01 Mar 2024 - 31 Mar 2024',
-                'generated_by' => 'Admin',
-                'generated_on' => '01 Apr 2024 09:30 AM',
-                'status' => 'Completed',
-            ],
-            [
-                'id' => 20,
-                'name' => 'Payment Report',
-                'type' => 'Payment',
-                'date_range' => '01 Mar 2024 - 31 Mar 2024',
-                'generated_by' => 'Admin',
-                'generated_on' => '01 Apr 2024 09:00 AM',
-                'status' => 'Completed',
-            ],
-
-            // Page 5
-            [
-                'id' => 21,
-                'name' => 'Customer Report',
-                'type' => 'Customer',
-                'date_range' => '01 Mar 2024 - 31 Mar 2024',
-                'generated_by' => 'Admin',
-                'generated_on' => '31 Mar 2024 04:30 PM',
-                'status' => 'Completed',
-            ],
-            [
-                'id' => 22,
-                'name' => 'Employee Report',
-                'type' => 'Employee',
-                'date_range' => '01 Mar 2024 - 31 Mar 2024',
-                'generated_by' => 'Admin',
-                'generated_on' => '31 Mar 2024 03:00 PM',
-                'status' => 'Completed',
-            ],
-            [
-                'id' => 23,
-                'name' => 'Inventory Report',
-                'type' => 'Inventory',
-                'date_range' => '31 Mar 2024',
-                'generated_by' => 'Admin',
-                'generated_on' => '31 Mar 2024 01:15 PM',
-                'status' => 'Completed',
-            ],
-            [
-                'id' => 24,
-                'name' => 'Service Popularity Report',
-                'type' => 'Service',
-                'date_range' => '01 Mar 2024 - 31 Mar 2024',
-                'generated_by' => 'Admin',
-                'generated_on' => '30 Mar 2024 10:45 AM',
-                'status' => 'Completed',
-            ],
-            [
-                'id' => 25,
-                'name' => 'Machine Usage Report',
-                'type' => 'Machine',
-                'date_range' => '01 Mar 2024 - 31 Mar 2024',
-                'generated_by' => 'Admin',
-                'generated_on' => '30 Mar 2024 09:30 AM',
-                'status' => 'Completed',
-            ],
-        ];
+        try {
+            if (!Schema::hasTable('reports')) {
+                Schema::create('reports', function ($t) {
+                    $t->id();
+                    $t->string('name');
+                    $t->string('category', 100)->default('daily_sale');
+                    $t->string('type', 100)->default('Sales');
+                    $t->string('date_range', 100)->nullable();
+                    $t->string('date', 50)->nullable();
+                    $t->string('generated_by', 100)->default('Admin');
+                    $t->string('generated_on', 100)->nullable();
+                    $t->text('description')->nullable();
+                    $t->longText('details')->nullable();
+                    $t->string('status', 50)->default('Completed');
+                    $t->timestamps();
+                });
+            } else {
+                $cols = Schema::getColumnListing('reports');
+                Schema::table('reports', function ($t) use ($cols) {
+                    if (!in_array('name', $cols)) {
+                        $t->string('name')->default('General Report');
+                    }
+                    if (!in_array('type', $cols)) {
+                        $t->string('type', 100)->default('Sales');
+                    }
+                    if (!in_array('date_range', $cols) && !in_array('date', $cols)) {
+                        $t->string('date_range', 100)->nullable();
+                    }
+                    if (!in_array('generated_by', $cols)) {
+                        $t->string('generated_by', 100)->default('Admin');
+                    }
+                    if (!in_array('generated_on', $cols)) {
+                        $t->string('generated_on', 100)->nullable();
+                    }
+                    if (!in_array('status', $cols)) {
+                        $t->string('status', 50)->default('Completed');
+                    }
+                });
+            }
+        } catch (\Throwable $e) {
+            Log::error('Reports table ensure error: ' . $e->getMessage());
+        }
     }
 
     /**
-     * Load reports with multi-layer persistence (MySQL -> JSON -> Session -> Default).
+     * Cleanup demo reports from database so users can start fresh.
      */
-    protected function loadData(): array
+    protected function cleanupDemoReports(): void
     {
-        // 1. Try MySQL Database
         try {
             if (Schema::hasTable('reports')) {
-                $count = Report::count();
-                if ($count > 0) {
-                    return Report::orderBy('id', 'asc')->get()->map(function ($r) {
-                        return (object) [
-                            'id' => $r->id,
-                            'name' => $r->name,
-                            'type' => $r->type ?: 'Sales',
-                            'date_range' => $r->date_range ?: ($r->date ?: '01 May 2024'),
-                            'generated_by' => $r->generated_by ?: 'Admin',
-                            'generated_on' => $r->generated_on ?: date('d M Y h:i A'),
-                            'status' => $r->status ?: 'Completed',
-                        ];
-                    })->all();
-                } else {
-                    $defaults = $this->getDefaultReports();
-                    foreach ($defaults as $d) {
-                        Report::create($d);
-                    }
-                    return $this->loadData();
+                $cols = Schema::getColumnListing('reports');
+                $dateCol = in_array('date_range', $cols) ? 'date_range' : (in_array('date', $cols) ? 'date' : null);
+                if ($dateCol) {
+                    Report::where($dateCol, 'like', '%2024%')->delete();
                 }
             }
-        } catch (\Throwable $e) {}
-
-        // 2. Try JSON storage file
-        if (Storage::exists('reports.json')) {
-            try {
-                $json = Storage::get('reports.json');
-                $decoded = json_decode($json, true);
-                if (is_array($decoded) && count($decoded) > 0) {
-                    return array_map(fn($d) => (object)$d, $decoded);
-                }
-            } catch (\Throwable $e) {}
+        } catch (\Throwable $e) {
+            Log::error('Cleanup demo reports error: ' . $e->getMessage());
         }
-
-        // 3. Try Session
-        if (session()->has('mock_reports')) {
-            $sess = session('mock_reports');
-            if (is_array($sess) && count($sess) > 0) {
-                return array_map(fn($d) => is_object($d) ? $d : (object)$d, $sess);
-            }
-        }
-
-        // 4. Default Fallback
-        $defaults = $this->getDefaultReports();
-        try {
-            Storage::put('reports.json', json_encode($defaults, JSON_PRETTY_PRINT));
-        } catch (\Throwable $e) {}
-        session(['mock_reports' => $defaults]);
-
-        return array_map(fn($d) => (object)$d, $defaults);
     }
 
     /**
-     * Persist reports across storage systems.
+     * Safely find report by id or report_id.
      */
-    protected function saveData(array $items): void
+    protected function findReport($id)
     {
-        $arrayData = array_map(fn($item) => (array)$item, $items);
+        if (is_object($id)) {
+            $id = $id->id ?? ($id->report_id ?? 1);
+        }
 
         try {
-            Storage::put('reports.json', json_encode($arrayData, JSON_PRETTY_PRINT));
-        } catch (\Throwable $e) {}
+            $cols = Schema::getColumnListing('reports');
+            $query = Report::query();
 
-        session(['mock_reports' => $arrayData]);
+            if (in_array('id', $cols) && in_array('report_id', $cols)) {
+                $query->where('id', $id)->orWhere('report_id', $id);
+            } elseif (in_array('id', $cols)) {
+                $query->where('id', $id);
+            } elseif (in_array('report_id', $cols)) {
+                $query->where('report_id', $id);
+            }
+
+            return $query->first();
+        } catch (\Throwable $e) {
+            return null;
+        }
     }
 
     /**
-     * Display Report Management view.
+     * Map request input to matching table columns.
+     */
+    protected function buildReportPayload(Request $request): array
+    {
+        $cols = Schema::getColumnListing('reports');
+        $payload = [];
+
+        $type = trim($request->input('type') ?? $request->input('report_type') ?? 'Sales');
+        $name = trim($request->input('name') ?? (ucwords(str_replace('_', ' ', $type)) . ' Report'));
+        $dateRange = trim($request->input('date_range') ?? (date('d M Y')));
+        $userName = Auth::check() ? (Auth::user()->full_name ?? Auth::user()->name ?? 'Admin') : 'Admin';
+        $nowFormatted = date('d M Y h:i A');
+
+        if (in_array('name', $cols)) $payload['name'] = $name;
+        if (in_array('type', $cols)) $payload['type'] = $type;
+        if (in_array('category', $cols)) $payload['category'] = strtolower(str_replace(' ', '_', $type));
+
+        if (in_array('date_range', $cols)) $payload['date_range'] = $dateRange;
+        if (in_array('date', $cols)) $payload['date'] = $dateRange;
+
+        if (in_array('generated_by', $cols)) $payload['generated_by'] = $userName;
+        if (in_array('generated_on', $cols)) $payload['generated_on'] = $nowFormatted;
+
+        if (in_array('status', $cols)) $payload['status'] = 'Completed';
+        if (in_array('description', $cols)) $payload['description'] = "Generated {$type} report for {$dateRange}";
+
+        return $payload;
+    }
+
+    /**
+     * Display Report Management view from MySQL Database.
      */
     public function index(Request $request)
     {
-        $allItems = $this->loadData();
-        $totalCount = count($allItems);
-        $perPage = 5; // 5 per page matching screenshot: "Showing 1 to 5 of 25 reports"
+        $this->ensureReportsTable();
+        $this->cleanupDemoReports();
+
+        $cols = Schema::getColumnListing('reports');
+        $query = Report::query();
+
+        // Safe order by primary key or created_at
+        $pk = in_array('id', $cols) ? 'id' : (in_array('report_id', $cols) ? 'report_id' : null);
+        if ($pk) {
+            $query->orderBy($pk, 'desc');
+        }
+
+        $totalCount = (clone $query)->count();
+        $perPage = 5; // 5 per page
         $page = max(1, (int)$request->input('page', 1));
         $totalPages = max(1, (int)ceil($totalCount / $perPage));
 
@@ -343,7 +161,7 @@ class ReportController extends Controller
         }
 
         $offset = ($page - 1) * $perPage;
-        $paginatedItems = array_slice($allItems, $offset, $perPage);
+        $paginatedItems = $query->skip($offset)->take($perPage)->get();
 
         if ($request->ajax() || $request->wantsJson()) {
             return response()->json([
@@ -365,10 +183,12 @@ class ReportController extends Controller
     }
 
     /**
-     * Generate / Store a new report.
+     * Generate / Store a new report directly in MySQL.
      */
     public function store(Request $request)
     {
+        $this->ensureReportsTable();
+
         $type = trim($request->input('type') ?? $request->input('report_type') ?? 'Sales');
         $name = trim($request->input('name') ?? (ucwords(str_replace('_', ' ', $type)) . ' Report'));
         $dateRange = trim($request->input('date_range') ?? (date('d M Y')));
@@ -384,39 +204,14 @@ class ReportController extends Controller
             'name' => 'required|string|max:255',
         ]);
 
-        $allItems = $this->loadData();
-        $maxId = 0;
-        foreach ($allItems as $i) {
-            if ($i->id > $maxId) $maxId = $i->id;
-        }
-        $newId = $maxId + 1;
-
-        $newReport = [
-            'id' => $newId,
-            'name' => $name,
-            'type' => $type,
-            'date_range' => $dateRange,
-            'generated_by' => Auth::check() ? Auth::user()->name : 'Admin',
-            'generated_on' => date('d M Y h:i A'),
-            'status' => 'Completed',
-        ];
-
-        // 1. Save to DB
-        try {
-            if (Schema::hasTable('reports')) {
-                Report::create($newReport);
-            }
-        } catch (\Throwable $e) {}
-
-        // 2. Prepend to list
-        array_unshift($allItems, (object)$newReport);
-        $this->saveData($allItems);
+        $payload = $this->buildReportPayload($request);
+        $report = Report::create($payload);
 
         if ($request->ajax() || $request->wantsJson()) {
             return response()->json([
                 'success' => true,
                 'message' => "Report '{$name}' generated successfully!",
-                'report' => $newReport,
+                'report' => $report,
                 'format' => $format,
             ]);
         }
@@ -425,12 +220,20 @@ class ReportController extends Controller
     }
 
     /**
-     * Export reports (Excel/CSV or PDF or Print).
+     * Export reports directly from MySQL (Excel/CSV or PDF or Print).
      */
     public function export(Request $request, $format = 'excel')
     {
+        $this->ensureReportsTable();
         $reportName = $request->input('name', 'Laundry_Business_Report');
-        $reports = $this->loadData();
+
+        $cols = Schema::getColumnListing('reports');
+        $query = Report::query();
+        $pk = in_array('id', $cols) ? 'id' : (in_array('report_id', $cols) ? 'report_id' : null);
+        if ($pk) {
+            $query->orderBy($pk, 'desc');
+        }
+        $reports = $query->get();
 
         if (strtolower($format) === 'excel' || strtolower($format) === 'csv') {
             $filename = str_replace(' ', '_', $reportName) . '_' . date('Ymd_His') . '.csv';
@@ -483,23 +286,28 @@ class ReportController extends Controller
     }
 
     /**
-     * Show dedicated print view.
+     * Show dedicated print view directly from MySQL.
      */
     public function printView(Request $request)
     {
+        $this->ensureReportsTable();
         $reportName = $request->input('name', 'General Report');
         $id = $request->input('id');
-        $allItems = $this->loadData();
 
-        $selectedReports = $allItems;
         if ($id) {
-            foreach ($allItems as $r) {
-                if ($r->id == $id) {
-                    $selectedReports = [$r];
-                    $reportName = $r->name;
-                    break;
-                }
+            $report = $this->findReport($id);
+            $selectedReports = $report ? [$report] : [];
+            if ($report) {
+                $reportName = $report->name;
             }
+        } else {
+            $cols = Schema::getColumnListing('reports');
+            $query = Report::query();
+            $pk = in_array('id', $cols) ? 'id' : (in_array('report_id', $cols) ? 'report_id' : null);
+            if ($pk) {
+                $query->orderBy($pk, 'desc');
+            }
+            $selectedReports = $query->get();
         }
 
         return view('pages.report_print', [
@@ -514,73 +322,102 @@ class ReportController extends Controller
      */
     public function show($id, $optionalId = null)
     {
-        if ($id instanceof \Illuminate\Http\Request) {
+        if ($id instanceof Request) {
             $id = $optionalId ?? $id->route('id') ?? $id->route('report');
         }
 
-        $allItems = $this->loadData();
-        foreach ($allItems as $r) {
-            if ($r->id == $id) {
-                return response()->json(['success' => true, 'report' => $r]);
-            }
+        $report = $this->findReport($id);
+
+        if (!$report) {
+            return response()->json(['success' => false, 'message' => 'Report not found.'], 404);
         }
-        return response()->json(['success' => false, 'message' => 'Report not found.'], 404);
+
+        return response()->json(['success' => true, 'report' => $report]);
     }
 
     /**
-     * Delete report.
+     * Update an existing report in MySQL database.
+     */
+    public function update(Request $request, $id)
+    {
+        $report = $this->findReport($id);
+
+        if (!$report) {
+            if ($request->ajax() || $request->wantsJson()) {
+                return response()->json(['success' => false, 'message' => 'Report not found.'], 404);
+            }
+            return redirect()->route('reports.index')->with('error', 'Report not found.');
+        }
+
+        $cols = Schema::getColumnListing('reports');
+        $updates = [];
+
+        if ($request->filled('name') && in_array('name', $cols)) {
+            $updates['name'] = trim($request->input('name'));
+        }
+        if ($request->filled('type') && in_array('type', $cols)) {
+            $updates['type'] = trim($request->input('type'));
+        }
+        if ($request->filled('date_range') && in_array('date_range', $cols)) {
+            $updates['date_range'] = trim($request->input('date_range'));
+        }
+        if ($request->filled('date') && in_array('date', $cols)) {
+            $updates['date'] = trim($request->input('date'));
+        }
+        if ($request->filled('status') && in_array('status', $cols)) {
+            $updates['status'] = trim($request->input('status'));
+        }
+
+        $report->update($updates);
+
+        if ($request->ajax() || $request->wantsJson()) {
+            return response()->json([
+                'success' => true,
+                'message' => "Report updated successfully in database!",
+                'report' => $report,
+            ]);
+        }
+
+        return redirect()->route('reports.index')->with('success', "Report updated successfully!");
+    }
+
+    /**
+     * Delete report from MySQL database.
      */
     public function destroy($id)
     {
-        $allItems = $this->loadData();
-        $newItems = [];
-        $deletedName = '';
+        $report = $this->findReport($id);
 
-        foreach ($allItems as $item) {
-            if ($item->id == $id) {
-                $deletedName = $item->name ?? "ID #{$id}";
-                continue;
-            }
-            $newItems[] = $item;
+        $deletedName = '';
+        if ($report) {
+            $deletedName = $report->name ?? "ID #{$id}";
+            $report->delete();
         }
 
-        // Try DB
-        try {
-            if (Schema::hasTable('reports')) {
-                Report::destroy($id);
-            }
-        } catch (\Throwable $e) {}
-
-        $this->saveData($newItems);
-
         if (request()->ajax() || request()->wantsJson()) {
-            return response()->json(['success' => true, 'message' => "Report '{$deletedName}' deleted successfully!"]);
+            return response()->json(['success' => true, 'message' => "Report '{$deletedName}' deleted successfully from database!"]);
         }
 
         return redirect()->route('reports.index')->with('success', "Report '{$deletedName}' deleted successfully!");
     }
 
     /**
-     * Reset back to 25 baseline reports.
+     * Clear all reports in MySQL database.
      */
     public function reset()
     {
-        $defaults = $this->getDefaultReports();
-        $this->saveData($defaults);
-
         try {
             if (Schema::hasTable('reports')) {
                 Report::truncate();
-                foreach ($defaults as $d) {
-                    Report::create($d);
-                }
             }
-        } catch (\Throwable $e) {}
-
-        if (request()->ajax() || request()->wantsJson()) {
-            return response()->json(['success' => true, 'message' => 'Reports reset to 25 baseline records successfully!']);
+        } catch (\Throwable $e) {
+            Log::error('Reset reports error: ' . $e->getMessage());
         }
 
-        return redirect()->route('reports.index')->with('success', 'Reports reset to 25 baseline records successfully!');
+        if (request()->ajax() || request()->wantsJson()) {
+            return response()->json(['success' => true, 'message' => 'Reports table has been cleared in database.']);
+        }
+
+        return redirect()->route('reports.index')->with('success', 'Reports table has been cleared in database.');
     }
 }

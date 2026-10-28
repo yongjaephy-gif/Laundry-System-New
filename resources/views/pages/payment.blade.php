@@ -1,4 +1,5 @@
 @extends('layouts.navbar')
+@section('title', 'Payments')
 
 @php
     /** @var array $payments */
@@ -17,15 +18,23 @@
 
     <!-- Flash Messages (Success & Error Alerts) -->
     @if(session('success'))
-        <div id="flash-success" class="p-4 rounded-2xl bg-emerald-50 border border-emerald-200 text-emerald-800 flex items-center justify-between shadow-2xs animate-in fade-in duration-200">
+        <div id="flash-success" class="p-4 rounded-2xl bg-emerald-50 border border-emerald-200 text-emerald-800 flex items-center justify-between shadow-2xs transition-all duration-500 animate-in fade-in duration-200">
             <div class="flex items-center space-x-3">
                 <i data-lucide="check-circle-2" class="w-5 h-5 text-emerald-600 shrink-0"></i>
                 <span class="text-sm font-semibold">{{ session('success') }}</span>
             </div>
-            <button type="button" onclick="document.getElementById('flash-success').remove()" class="text-emerald-500 hover:text-emerald-700 p-1">
-                <i data-lucide="x" class="w-4 h-4"></i>
-            </button>
+            <button type="button" onclick="document.getElementById('flash-success').remove()" class="text-emerald-600 hover:text-emerald-800 text-lg leading-none cursor-pointer">&times;</button>
         </div>
+        <script>
+            setTimeout(function() {
+                const el = document.getElementById('flash-success');
+                if (el) {
+                    el.style.opacity = '0';
+                    el.style.transform = 'translateY(-6px)';
+                    setTimeout(() => el.remove(), 400);
+                }
+            }, 3500);
+        </script>
     @endif
 
     @if(session('error'))
@@ -340,45 +349,58 @@
                         </td>
 
                         <!-- Actions -->
-                        <td class="py-3.5 px-4 text-center">
-                            <div class="flex items-center justify-center space-x-2 text-gray-400">
+                        <td class="py-3.5 px-4 whitespace-nowrap text-center">
+                            <div class="flex items-center justify-center space-x-1.5">
                                 
-                                <!-- View Details Icon -->
+                                <!-- 1. View Details (Blue Eye Button - Matching System Style) -->
                                 <button type="button" 
                                         data-id="{{ $payment['payment_id'] }}"
                                         onclick="viewPaymentById(this.dataset.id)"
-                                        class="hover:text-blue-600 transition p-1 cursor-pointer" 
+                                        class="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-[#2563EB] hover:bg-blue-700 text-white flex items-center justify-center transition shadow-2xs cursor-pointer" 
                                         title="View Details">
-                                    <svg class="w-4 h-4 stroke-current" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
-                                        <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
-                                        <circle cx="12" cy="12" r="3"></circle>
+                                    <svg class="w-3.5 h-3.5 sm:w-4 sm:h-4 stroke-current" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.2">
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>
                                     </svg>
                                 </button>
 
-                                <!-- Generate / Print Invoice Icon -->
+                                <!-- 2. Generate / Print Invoice (Green Receipt Button) -->
                                 <button type="button" 
                                         data-id="{{ $payment['payment_id'] }}"
                                         onclick="openInvoiceById(this.dataset.id)"
-                                        class="hover:text-emerald-600 transition p-1 cursor-pointer" 
+                                        class="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-[#10B981] hover:bg-emerald-600 text-white flex items-center justify-center transition shadow-2xs cursor-pointer" 
                                         title="Generate Invoice / Print Receipt">
-                                    <svg class="w-4 h-4 stroke-current" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                                    <svg class="w-3.5 h-3.5 sm:w-4 sm:h-4 stroke-current" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.2">
                                         <polyline points="6 9 6 2 18 2 18 9"></polyline>
-                                        <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path>
-                                        <rect x="6" y="14" width="12" height="8"></rect>
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path>
+                                        <rect x="6" y="14" width="12" height="8" rx="1"></rect>
                                     </svg>
                                 </button>
 
-                                <!-- Action Menu Dropdown Button -->
+                                <!-- 3. Delete Record (Rose / Red Trash Button) -->
+                                <form method="POST" action="{{ route('payment.destroy', $payment['payment_id']) }}" onsubmit="return confirm('Delete this payment transaction?');" class="inline">
+                                    @csrf
+                                    @method('DELETE')
+                                    <button type="submit" 
+                                            class="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-[#EF4444] hover:bg-rose-600 text-white flex items-center justify-center transition shadow-2xs cursor-pointer" 
+                                            title="Delete Record">
+                                        <svg class="w-3.5 h-3.5 sm:w-4 sm:h-4 stroke-current" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.2">
+                                            <path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
+                                        </svg>
+                                    </button>
+                                </form>
+
+                                <!-- 4. Action Menu Dropdown Button (Kebab for Refund & Extra Options) -->
                                 <div class="relative inline-block text-left">
                                     <button type="button" 
                                             data-menu="menu-{{ $payment['id'] ?? $payment['payment_id'] }}"
                                             onclick="toggleRowMenu(this.dataset.menu, event)"
-                                            class="hover:text-gray-700 transition p-1 cursor-pointer" 
+                                            class="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-500 flex items-center justify-center transition shadow-2xs cursor-pointer" 
                                             title="More Actions">
-                                        <svg class="w-4 h-4 stroke-current" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
-                                            <circle cx="12" cy="12" r="1"></circle>
-                                            <circle cx="12" cy="5" r="1"></circle>
-                                            <circle cx="12" cy="19" r="1"></circle>
+                                        <svg class="w-3.5 h-3.5 sm:w-4 sm:h-4 stroke-current" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.2">
+                                            <circle cx="12" cy="12" r="1.5"></circle>
+                                            <circle cx="12" cy="5" r="1.5"></circle>
+                                            <circle cx="12" cy="19" r="1.5"></circle>
                                         </svg>
                                     </button>
 
@@ -694,23 +716,20 @@
 </div>
 
 <!-- ======================================================== -->
-<!-- MODAL: ADD PAYMENT (Screenshot 2 Pixel-Perfect Replica) -->
+<!-- MODAL: ADD PAYMENT                                     -->
 <!-- ======================================================== -->
-<div id="addPaymentModal" class="hidden fixed inset-0 bg-black/50 z-50 items-center justify-center p-4 backdrop-blur-xs overflow-y-auto">
-    <div class="bg-white rounded-3xl w-full max-w-[480px] shadow-2xl overflow-hidden my-8 animate-in fade-in zoom-in-95 duration-150">
+<div id="addPaymentModal" onclick="if(event.target === this) closeAddPaymentModal()" class="hidden fixed inset-0 z-50 overflow-y-auto bg-gray-900/60 backdrop-blur-xs flex items-center justify-center p-4">
+    <div class="bg-white rounded-3xl max-w-lg w-full p-6 shadow-2xl border border-gray-100 transform transition-all relative my-auto max-h-[92vh] flex flex-col">
         
         <!-- Modal Header -->
-        <div class="p-6 pb-4 flex items-center justify-between border-b border-gray-100">
+        <div class="flex items-center justify-between pb-3 border-b border-gray-100 shrink-0">
             <h3 class="text-xl font-bold text-gray-900 tracking-tight">Add Payment</h3>
-            <button type="button" onclick="closeAddPaymentModal()" class="text-gray-400 hover:text-gray-600 transition p-1">
-                <svg class="w-5 h-5 stroke-current" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5">
-                    <line x1="18" y1="6" x2="6" y2="18"></line>
-                    <line x1="6" y1="6" x2="18" y2="18"></line>
-                </svg>
+            <button type="button" onclick="closeAddPaymentModal()" class="text-gray-400 hover:text-gray-600 text-lg transition cursor-pointer">
+                ✕
             </button>
         </div>
 
-        <form action="{{ route('payment.record') }}" method="POST" id="addPaymentForm" class="p-6 space-y-5">
+        <form action="{{ route('payment.record') }}" method="POST" id="addPaymentForm" class="mt-3.5 space-y-3 overflow-y-auto pr-1 flex-1">
             @csrf
 
             <!-- Quick Order Selector (Allows selecting existing order or entering custom) -->
@@ -722,10 +741,10 @@
                     $initAmount = isset($firstOrder['total_amount']) ? number_format($firstOrder['total_amount'], 2, '.', '') : '0.00';
                     $initDate = $firstOrder['order_date'] ?? date('Y-m-d');
                 @endphp
-                <label class="block text-xs font-semibold text-gray-700 mb-1.5">
-                    Select Order <span class="text-gray-400 font-normal">(Auto-fills Order Information)</span>
+                <label class="block text-xs font-semibold text-gray-700 mb-1">
+                    Select Order <span class="text-gray-400 font-normal text-[11px]">(Auto-fills Order Information)</span>
                 </label>
-                <select id="modalOrderSelector" onchange="onOrderSelected(this.value)" class="w-full bg-white text-gray-800 text-sm rounded-xl px-3.5 py-2.5 border border-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition appearance-none cursor-pointer bg-[url('data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2224%22%20height%3D%2224%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%236b7280%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpolyline%20points%3D%226%209%2012%2015%2018%209%22%3E%3C%2Fpolyline%3E%3C%2Fsvg%3E')] bg-[length:1rem] bg-[right_0.8rem_center] bg-no-repeat pr-8">
+                <select id="modalOrderSelector" onchange="onOrderSelected(this.value)" class="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-xl text-xs focus:ring-2 focus:ring-blue-500 cursor-pointer">
                     @if(empty($availableOrders))
                         <option value="" disabled selected>No orders available (enter manually)</option>
                     @endif
@@ -741,165 +760,131 @@
                 </select>
             </div>
 
-            <!-- 1. Order Information Box (Matching Screenshot 2 Exactly) -->
-            <div>
-                <h4 class="text-sm font-bold text-gray-900 mb-2.5">Order Information</h4>
-                <div class="bg-[#F0F7FF] border border-[#E0EDFD] rounded-2xl p-4 space-y-2.5 text-sm">
-                    <div class="flex items-center justify-between">
-                        <span class="text-gray-500">Order No.</span>
+            <!-- 1. Order Information Box (Compact 4-column summary) -->
+            <div class="bg-[#F0F7FF] border border-[#E0EDFD] rounded-2xl p-2.5 text-xs">
+                <div class="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                    <div>
+                        <span class="text-gray-500 block text-[10px] uppercase font-semibold">Order No</span>
                         <span id="displayOrderNo" class="font-bold text-gray-900">{{ $initOrderNo ?: 'None' }}</span>
                         <input type="hidden" name="order_number" id="inputOrderNo" value="{{ $initOrderNo }}">
                     </div>
-                    <div class="flex items-center justify-between">
-                        <span class="text-gray-500">Customer</span>
-                        <span id="displayCustomer" class="font-bold text-gray-900">{{ $initCustomer ?: 'None' }}</span>
+                    <div>
+                        <span class="text-gray-500 block text-[10px] uppercase font-semibold">Customer</span>
+                        <span id="displayCustomer" class="font-bold text-gray-900 truncate block">{{ $initCustomer ?: 'None' }}</span>
                         <input type="hidden" name="customer_name" id="inputCustomerName" value="{{ $initCustomer }}">
                     </div>
-                    <div class="flex items-center justify-between">
-                        <span class="text-gray-500">Total Amount</span>
-                        <span id="displayTotalAmount" class="font-bold text-gray-900">${{ $initAmount }}</span>
+                    <div>
+                        <span class="text-gray-500 block text-[10px] uppercase font-semibold">Total Amount</span>
+                        <span id="displayTotalAmount" class="font-bold text-blue-600">${{ $initAmount }}</span>
                     </div>
-                    <div class="flex items-center justify-between">
-                        <span class="text-gray-500">Order Date</span>
+                    <div>
+                        <span class="text-gray-500 block text-[10px] uppercase font-semibold">Order Date</span>
                         <span id="displayOrderDate" class="font-bold text-gray-900">{{ $initDate }}</span>
                     </div>
                 </div>
             </div>
 
-            <!-- 2. Payment Details Section -->
-            <div class="space-y-4 pt-1">
-                <h4 class="text-sm font-bold text-gray-900">Payment Details</h4>
-
+            <!-- 2. Payment Details Section (Compact 2 columns per row) -->
+            <div class="grid grid-cols-2 gap-3">
                 <!-- Payment Method * -->
                 <div>
-                    <label class="block text-xs font-semibold text-gray-700 mb-1.5">
+                    <label class="block text-xs font-semibold text-gray-700 mb-1">
                         Payment Method <span class="text-red-500">*</span>
                     </label>
-                    <div class="relative">
-                        <span class="absolute inset-y-0 left-0 flex items-center pl-3.5 pointer-events-none text-gray-400">
-                            <svg class="w-4 h-4 stroke-current" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
-                                <rect x="2" y="5" width="20" height="14" rx="3"></rect>
-                                <line x1="2" y1="10" x2="22" y2="10"></line>
-                            </svg>
-                        </span>
-                        <select name="payment_method" 
-                                id="inputPaymentMethod"
-                                required
-                                class="w-full bg-white text-gray-800 text-sm rounded-xl pl-10 pr-8 py-2.5 border border-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition appearance-none cursor-pointer bg-[url('data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2224%22%20height%3D%2224%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%236b7280%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpolyline%20points%3D%226%209%2012%2015%2018%209%22%3E%3C%2Fpolyline%3E%3C%2Fsvg%3E')] bg-[length:1rem] bg-[right_0.8rem_center] bg-no-repeat">
-                            <option value="Cash" selected>Cash</option>
-                            <option value="Credit Card">Credit Card</option>
-                            <option value="Bank Transfer">Bank Transfer</option>
-                            <option value="Mobile Payment">Mobile Payment</option>
-                        </select>
-                    </div>
+                    <select name="payment_method" 
+                            id="inputPaymentMethod"
+                            required
+                            class="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-xl text-xs focus:ring-2 focus:ring-blue-500">
+                        <option value="Cash" selected>Cash</option>
+                        <option value="Credit Card">Credit Card</option>
+                        <option value="Bank Transfer">Bank Transfer</option>
+                        <option value="Mobile Payment">Mobile Payment</option>
+                    </select>
                 </div>
 
                 <!-- Amount * -->
                 <div>
-                    <label class="block text-xs font-semibold text-gray-700 mb-1.5">
-                        Amount <span class="text-red-500">*</span>
+                    <label class="block text-xs font-semibold text-gray-700 mb-1">
+                        Amount ($) <span class="text-red-500">*</span>
                     </label>
-                    <div class="relative">
-                        <input type="number" 
-                               step="0.01" 
-                               name="amount" 
-                               id="inputAmount"
-                               value="{{ $initAmount }}" 
-                               required 
-                               placeholder="Enter amount" 
-                               class="w-full bg-white text-gray-800 text-sm rounded-xl pl-4 pr-10 py-2.5 border border-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition">
-                        <span class="absolute inset-y-0 right-0 flex items-center pr-3.5 pointer-events-none text-gray-500 font-bold text-sm">
-                            $
-                        </span>
-                    </div>
+                    <input type="number" 
+                           step="0.01" 
+                           name="amount" 
+                           id="inputAmount"
+                           value="{{ $initAmount }}" 
+                           required 
+                           placeholder="0.00" 
+                           class="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-xl text-xs font-bold text-blue-600 focus:ring-2 focus:ring-blue-500">
                 </div>
+            </div>
 
+            <div class="grid grid-cols-2 gap-3">
                 <!-- Payment Status * -->
                 <div>
-                    <label class="block text-xs font-semibold text-gray-700 mb-1.5">
+                    <label class="block text-xs font-semibold text-gray-700 mb-1">
                         Payment Status <span class="text-red-500">*</span>
                     </label>
-                    <div class="relative">
-                        <span class="absolute inset-y-0 left-0 flex items-center pl-3.5 pointer-events-none text-emerald-600">
-                            <svg class="w-4 h-4 fill-current" viewBox="0 0 20 20">
-                                <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"></path>
-                            </svg>
-                        </span>
-                        <select name="status" 
-                                id="inputPaymentStatus"
-                                required
-                                class="w-full bg-white text-gray-800 text-sm rounded-xl pl-10 pr-8 py-2.5 border border-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition appearance-none cursor-pointer bg-[url('data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2224%22%20height%3D%2224%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%236b7280%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpolyline%20points%3D%226%209%2012%2015%2018%209%22%3E%3C%2Fpolyline%3E%3C%2Fsvg%3E')] bg-[length:1rem] bg-[right_0.8rem_center] bg-no-repeat">
-                            <option value="COMPLETED" selected>Completed</option>
-                            <option value="PENDING">Pending</option>
-                            <option value="REFUNDED">Refunded</option>
-                        </select>
-                    </div>
+                    <select name="status" 
+                            id="inputPaymentStatus"
+                            required
+                            class="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-xl text-xs focus:ring-2 focus:ring-blue-500">
+                        <option value="COMPLETED" selected>Completed</option>
+                        <option value="PENDING">Pending</option>
+                        <option value="REFUNDED">Refunded</option>
+                    </select>
                 </div>
 
                 <!-- Payment Date * -->
                 <div>
-                    <label class="block text-xs font-semibold text-gray-700 mb-1.5">
+                    <label class="block text-xs font-semibold text-gray-700 mb-1">
                         Payment Date <span class="text-red-500">*</span>
                     </label>
-                    <div class="relative">
-                        <span class="absolute inset-y-0 left-0 flex items-center pl-3.5 pointer-events-none text-gray-400">
-                            <svg class="w-4 h-4 stroke-current" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
-                                <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
-                                <line x1="16" y1="2" x2="16" y2="6"></line>
-                                <line x1="8" y1="2" x2="8" y2="6"></line>
-                                <line x1="3" y1="10" x2="21" y2="10"></line>
-                            </svg>
-                        </span>
-                        <input type="date" 
-                               name="payment_date" 
-                               id="inputPaymentDate"
-                               value="{{ date('Y-m-d') }}" 
-                               required 
-                               class="w-full bg-white text-gray-800 text-sm rounded-xl pl-10 pr-4 py-2.5 border border-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition">
-                    </div>
+                    <input type="date" 
+                           name="payment_date" 
+                           id="inputPaymentDate"
+                           value="{{ date('Y-m-d') }}" 
+                           required 
+                           class="w-full px-2.5 py-2 bg-gray-50 border border-gray-200 rounded-xl text-xs focus:ring-2 focus:ring-blue-500">
                 </div>
-
-                <!-- Transaction ID / Reference No. -->
-                <div>
-                    <label class="block text-xs font-semibold text-gray-700 mb-1.5">
-                        Transaction ID / Reference No.
-                    </label>
-                    <input type="text" 
-                           name="reference_no" 
-                           id="inputReferenceNo"
-                           placeholder="Enter transaction ID / reference no." 
-                           class="w-full bg-white text-gray-800 text-sm rounded-xl px-4 py-2.5 border border-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition">
-                </div>
-
-                <!-- Notes (Optional) with 0/500 counter -->
-                <div>
-                    <label class="block text-xs font-semibold text-gray-700 mb-1.5">
-                        Notes <span class="text-gray-400 font-normal">(Optional)</span>
-                    </label>
-                    <textarea name="notes" 
-                              id="inputNotes"
-                              rows="3" 
-                              maxlength="500" 
-                              oninput="updateNoteCounter(this)"
-                              placeholder="Enter notes..." 
-                              class="w-full bg-white text-gray-800 text-sm rounded-xl p-3 border border-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition resize-none"></textarea>
-                    <div class="text-right text-[11px] text-gray-400 mt-1">
-                        <span id="noteCharCounter">0</span>/500
-                    </div>
-                </div>
-
             </div>
 
-            <!-- Footer Buttons: Cancel & Save Payment (Matching Screenshot 2) -->
-            <div class="flex items-center space-x-3 pt-3 border-t border-gray-100">
+            <!-- Transaction ID / Reference No. -->
+            <div>
+                <label class="block text-xs font-semibold text-gray-700 mb-1">
+                    Transaction ID / Reference No.
+                </label>
+                <input type="text" 
+                       name="reference_no" 
+                       id="inputReferenceNo"
+                       placeholder="Enter transaction ID / reference no." 
+                       class="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-xl text-xs focus:ring-2 focus:ring-blue-500">
+            </div>
+
+            <!-- Notes (Optional) with counter -->
+            <div>
+                <div class="flex items-center justify-between mb-1">
+                    <label class="text-xs font-semibold text-gray-700">Notes <span class="text-gray-400 font-normal text-[11px]">(Optional)</span></label>
+                    <span class="text-[10px] text-gray-400"><span id="noteCharCounter">0</span>/500</span>
+                </div>
+                <textarea name="notes" 
+                          id="inputNotes"
+                          rows="1.5" 
+                          maxlength="500" 
+                          oninput="updateNoteCounter(this)"
+                          placeholder="Enter notes..." 
+                          class="w-full px-3 py-1.5 bg-gray-50 border border-gray-200 rounded-xl text-xs focus:ring-2 focus:ring-blue-500 resize-none"></textarea>
+            </div>
+
+            <!-- Footer Buttons: Cancel & Save Payment -->
+            <div class="pt-3 border-t border-gray-100 flex items-center justify-end space-x-2 shrink-0">
                 <button type="button" 
                         onclick="closeAddPaymentModal()"
-                        class="flex-1 py-2.5 px-4 bg-white border border-gray-200 text-gray-700 hover:bg-gray-50 active:scale-[0.98] font-semibold text-sm rounded-xl transition cursor-pointer text-center">
+                        class="px-4 py-2 text-xs font-semibold text-gray-600 bg-gray-100 hover:bg-gray-200 rounded-xl transition cursor-pointer">
                     Cancel
                 </button>
                 <button type="submit" 
-                        class="flex-1 py-2.5 px-4 bg-[#2042E3] hover:bg-[#1A38C2] active:scale-[0.98] text-white font-semibold text-sm rounded-xl shadow-xs transition flex items-center justify-center space-x-2 cursor-pointer">
-                    <svg class="w-4 h-4 stroke-current" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                        class="px-5 py-2 bg-[#2042E3] hover:bg-blue-700 text-white text-xs font-bold rounded-xl shadow-sm transition flex items-center space-x-1.5 cursor-pointer">
+                    <svg class="w-3.5 h-3.5 stroke-current" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
                         <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path>
                         <polyline points="17 21 17 13 7 13 7 21"></polyline>
                         <polyline points="7 3 7 8 15 8"></polyline>
